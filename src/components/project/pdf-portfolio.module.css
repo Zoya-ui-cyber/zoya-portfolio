@@ -1,0 +1,43 @@
+/* Applies only while a PDF project is mounted, including client navigation. */
+:global(html):has(.root) {
+  scroll-snap-type: none;
+  scroll-padding-top: 48px;
+}
+.root {
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  background: #fff;
+  scroll-snap-type: none;
+}
+.navigation {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+.navigation :global(.site-header) {
+  position: relative;
+  min-height: 48px;
+  padding-inline: clamp(12px, 3vw, 48px);
+}
+.navigation :global(.site-nav) { gap: clamp(12px, 2vw, 32px); }
+.pages, .page {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  scroll-snap-align: none;
+  scroll-snap-type: none;
+}
+.end { margin: 0; padding: 32px clamp(16px, 3vw, 48px); scroll-snap-align: none; }
+.end a { display: inline-flex; flex-direction: column; gap: 8px; }
+.end span { font-size: 12px; letter-spacing: .06em; }
+.end strong { font-size: clamp(16px, 2vw, 24px); font-weight: 500; overflow-wrap: anywhere; }
+.end a:hover, .end a:focus-visible { color: #2956a3; }

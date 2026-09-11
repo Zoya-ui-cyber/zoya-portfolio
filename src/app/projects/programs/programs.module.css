@@ -1,0 +1,20 @@
+:global(html):has(.root){scroll-snap-type:none;scroll-padding-top:48px}
+.root{background:#fafaf8;color:#222;min-width:0}
+.navigation{position:sticky;top:0;z-index:50}
+.navigation :global(.site-header){position:relative;min-height:48px;padding-inline:clamp(12px,3vw,48px)}
+.navigation :global(.site-nav){gap:clamp(12px,2vw,32px)}
+.main{padding:32px clamp(16px,4vw,64px) 0}
+.intro{max-width:900px;margin-bottom:64px}
+.label{font-size:11px;letter-spacing:.1em;color:#365b94}
+.intro h1{font-size:clamp(28px,4vw,48px);font-weight:500;margin:12px 0}
+.intro p:last-child,.copy p{font-size:14px;line-height:1.8}
+.project{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px 6vw;padding-bottom:64px;margin-bottom:48px}
+.copy h2{font-size:clamp(28px,3vw,40px);font-weight:500;margin:16px 0 8px}
+.copy h3{font-size:18px;font-weight:400;margin:0 0 24px}
+.steps{margin-top:32px}.note{color:#666}
+.figure{margin:0;min-width:0}.figure img{display:block;width:100%;height:auto}
+.download{grid-column:1/-1;padding-top:16px}
+.download a,.download button{display:inline-flex;gap:20px;align-items:center;padding:12px 0;border:0;border-bottom:1px solid #aaa;background:transparent;font-size:14px}
+.download a:hover{color:#365b94}.download span{font-size:11px;color:#666}.download button{color:#888}
+.footer{padding:24px clamp(16px,4vw,64px) 40px;font-size:13px}
+@media(max-width:700px){.project{grid-template-columns:1fr;gap:24px;margin-bottom:16px}.intro{margin-bottom:40px}.download a{flex-wrap:wrap;gap:8px 16px}}

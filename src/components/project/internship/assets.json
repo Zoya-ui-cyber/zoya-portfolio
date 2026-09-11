@@ -1,0 +1,146 @@
+{
+  "interior": [
+    {
+      "src": "/projects/internship/japanese-interior/01.jpg",
+      "width": 3840,
+      "height": 760
+    },
+    {
+      "src": "/projects/internship/japanese-interior/02.jpg",
+      "width": 3000,
+      "height": 766
+    },
+    {
+      "src": "/projects/internship/japanese-interior/03.jpg",
+      "width": 3000,
+      "height": 766
+    },
+    {
+      "src": "/projects/internship/japanese-interior/04.png",
+      "width": 4018,
+      "height": 1024
+    },
+    {
+      "src": "/projects/internship/japanese-interior/05.jpeg",
+      "width": 1794,
+      "height": 8134
+    }
+  ],
+  "festival": [
+    {
+      "src": "/projects/internship/japanese-festival/01.png",
+      "width": 3840,
+      "height": 760
+    },
+    {
+      "src": "/projects/internship/japanese-festival/02.png",
+      "width": 3000,
+      "height": 766
+    },
+    {
+      "src": "/projects/internship/japanese-festival/03.png",
+      "width": 3000,
+      "height": 766
+    },
+    {
+      "src": "/projects/internship/japanese-festival/04.png",
+      "width": 3000,
+      "height": 766
+    },
+    {
+      "src": "/projects/internship/japanese-festival/05.jpeg",
+      "width": 1794,
+      "height": 8434
+    }
+  ],
+  "renders": [
+    [
+      {
+        "src": "/projects/internship/render-01/01.jpg",
+        "width": 600,
+        "height": 397
+      },
+      {
+        "src": "/projects/internship/render-01/02.jpg",
+        "width": 1024,
+        "height": 768
+      },
+      {
+        "src": "/projects/internship/render-01/03.jpg",
+        "width": 1024,
+        "height": 768
+      },
+      {
+        "src": "/projects/internship/render-01/04.jpg",
+        "width": 1024,
+        "height": 768
+      }
+    ],
+    [
+      {
+        "src": "/projects/internship/render-02/01.jpg",
+        "width": 640,
+        "height": 640
+      },
+      {
+        "src": "/projects/internship/render-02/02.jpg",
+        "width": 768,
+        "height": 768
+      },
+      {
+        "src": "/projects/internship/render-02/03.jpg",
+        "width": 1024,
+        "height": 768
+      },
+      {
+        "src": "/projects/internship/render-02/04.jpg",
+        "width": 1024,
+        "height": 768
+      }
+    ],
+    [
+      {
+        "src": "/projects/internship/render-03/01.png",
+        "width": 1849,
+        "height": 1250
+      },
+      {
+        "src": "/projects/internship/render-03/02.jpg",
+        "width": 1024,
+        "height": 768
+      },
+      {
+        "src": "/projects/internship/render-03/03.jpg",
+        "width": 1024,
+        "height": 768
+      },
+      {
+        "src": "/projects/internship/render-03/04.jpg",
+        "width": 1024,
+        "height": 768
+      }
+    ],
+    [
+      {
+        "src": "/projects/internship/render-04/01.png",
+        "width": 953,
+        "height": 1198
+      },
+      {
+        "src": "/projects/internship/render-04/02.jpg",
+        "width": 768,
+        "height": 1024
+      },
+      {
+        "src": "/projects/internship/render-04/03.jpg",
+        "width": 768,
+        "height": 768
+      },
+      {
+        "src": "/projects/internship/render-04/04.jpg",
+        "width": 768,
+        "height": 768
+      }
+    ]
+  ]
+}

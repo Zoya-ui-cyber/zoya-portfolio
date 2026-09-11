@@ -1,0 +1,27 @@
+:global(html):has(.root){scroll-snap-type:none;scroll-padding-top:48px}
+.root{background:#fafaf8;color:#202020;width:100%;min-width:0}
+.header{position:sticky;top:0;z-index:50}
+.header :global(.site-header){position:relative;min-height:48px;padding-inline:clamp(12px,3vw,48px)}
+.header :global(.site-nav){gap:clamp(12px,2vw,32px)}
+.intro,.sceneTitle{padding:24px clamp(16px,3vw,48px)}
+.intro h1,.sceneTitle h1{font-size:clamp(24px,3vw,40px);font-weight:500;margin:8px 0 14px}
+.intro p:last-child,.sceneTitle p:last-child{font-size:14px;line-height:1.7;max-width:920px;margin:0;color:#606060}
+.eyebrow{font-size:11px;letter-spacing:.1em;color:#365b94;margin:0}
+.topic{padding-top:32px}
+.topic h2{font-size:clamp(20px,2.4vw,32px);font-weight:500;padding:0 clamp(16px,3vw,48px);margin:0 0 24px}
+.topic h2 span{font-size:12px;color:#365b94;margin-right:20px}
+.banner{margin:0 0 24px}
+.banner figcaption{font-size:11px;letter-spacing:.05em;padding:8px clamp(16px,3vw,48px);color:#666}
+.banner img,.final img{width:100%;height:auto;display:block}
+.preview{display:block;margin:24px auto 40px;border:1px solid #aaa;background:transparent;padding:12px 24px;font-size:13px;cursor:pointer}
+.preview:hover,.preview:focus-visible{color:#365b94;border-color:#365b94}
+.final{width:100%;margin:0 0 40px}
+.screen{height:calc(100dvh - 48px);min-height:540px;display:flex;flex-direction:column;box-sizing:border-box;padding-bottom:24px}
+.sceneTitle{flex:none}.sceneTitle h2{font-size:24px;font-weight:500;margin:8px 0}
+.pair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px;padding:0 clamp(16px,3vw,48px);min-height:0;flex:1}
+.pair figure{display:flex;flex-direction:column;margin:0;min-height:0;min-width:0}
+.pair figcaption{font-size:11px;letter-spacing:.05em;color:#666;margin:0 0 10px;flex:none}
+.pair img{width:100%;height:100%;object-fit:contain;object-position:center;min-height:0;flex:1}
+.footer{padding:32px clamp(16px,3vw,48px);display:flex;justify-content:space-between;gap:20px;font-size:13px}
+.footer a:hover{color:#365b94}
+@media(max-width:600px){.screen{height:auto;min-height:0;padding-bottom:32px}.pair{gap:12px;padding-inline:12px}.pair img{height:auto;aspect-ratio:1;object-fit:contain;flex:none}.sceneTitle{padding:20px 16px}.footer{flex-wrap:wrap}.pair figcaption{font-size:10px}}
