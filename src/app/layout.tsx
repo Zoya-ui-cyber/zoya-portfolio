@@ -13,9 +13,9 @@ const metaFont = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Zina Yin — Portfolio",
+  title: "Zoya Yin — Portfolio",
   description:
-    "Architecture, Spatial Design, Digital Practice and Visual Work by Zina Yin.",
+    "Architecture, Spatial Design, Digital Practice and Visual Work by Zoya Yin.",
 };
 
 export default function RootLayout({

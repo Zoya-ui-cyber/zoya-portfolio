@@ -29,10 +29,8 @@ const guestDialog = document.querySelector('#guestbook-dialog');
 const guestList = document.querySelector('#guest-list');
 const guestForm = document.querySelector('#guest-form');
 const guestStatus = document.querySelector('#guest-status');
-const guestManage = document.querySelector('#guest-manage');
 
 let notes = [];
-let manageNotes = false;
 
 async function loadGuestbook() {
   try {
@@ -71,15 +69,6 @@ async function loadGuestbook() {
 
 function renderNotes() {
   guestList.replaceChildren();
-
-  guestManage.setAttribute(
-    'aria-pressed',
-    String(manageNotes)
-  );
-
-  guestManage.textContent = manageNotes
-    ? '返回访客视图'
-    : '管理预览';
 
   if (!notes.length) {
     const p = document.createElement('p');
@@ -124,11 +113,6 @@ document.querySelector('#nav-guest').onclick = () => {
 document.querySelector('#guest-open').onclick = () => {
   selectRoom('atrium');
   openGuestbook();
-};
-
-guestManage.onclick = () => {
-  manageNotes = !manageNotes;
-  renderNotes();
 };
 
 guestForm.onsubmit = async event => {

@@ -14,7 +14,7 @@ export default function AboutPage() {
           <div className="about-intro">
             <p className="eyebrow">ABOUT</p>
 
-            <h1>ZINA YIN</h1>
+            <h1>ZOYA YIN</h1>
 
             <p className="about-role">
               Spatial / Digital Designer
