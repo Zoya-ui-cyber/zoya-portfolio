@@ -1,7 +1,7 @@
 /* Applies only while a PDF project is mounted, including client navigation. */
 :global(html):has(.root) {
   scroll-snap-type: none;
-  scroll-padding-top: 48px;
+  scroll-padding-top: 0;
 }
 .root {
   width: 100%;
@@ -11,19 +11,9 @@
   background: #fff;
   scroll-snap-type: none;
 }
-.navigation {
-  position: sticky;
-  top: 0;
-  z-index: 50;
-}
-.navigation :global(.site-header) {
-  position: relative;
-  min-height: 48px;
-  padding-inline: clamp(12px, 3vw, 48px);
-}
-.navigation :global(.site-nav) { gap: clamp(12px, 2vw, 32px); }
 .pages, .page {
   display: block;
+  gap: 0;
   width: 100%;
   max-width: 100%;
   height: auto;

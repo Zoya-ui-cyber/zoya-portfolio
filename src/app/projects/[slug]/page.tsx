@@ -28,19 +28,15 @@ export default async function ProjectPage({
 
   const nextProject = getNextProject(slug);
 
-  // 手工艺学院使用自己的独立页面
+  // PDF mode takes priority; the existing custom implementation remains intact.
+  if (project.mode === "pdf" && project.pages?.length) {
+    return <PdfPortfolioProject key={project.slug} project={project} nextProject={nextProject?.order === 1 ? undefined : nextProject} />;
+  }
 
+  // Set craft-academy's mode to "custom" to restore the original page.
   if (project.slug === "craft-academy") {
-  return (
-    <>
-      <CraftAcademy />
-    </>
-  );
-}
-
-if (project.mode === "pdf" && project.pages?.length) {
-  return <PdfPortfolioProject key={project.slug} project={project} nextProject={nextProject?.order === 1 ? undefined : nextProject} />;
-}
+    return <CraftAcademy />;
+  }
 
 // 保留原有定制页面的回退逻辑
 

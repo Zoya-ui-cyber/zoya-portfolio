@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import Header from "@/components/layout/Header";
 import type { Project, Language } from "@/types/project";
 import styles from "./pdf-portfolio.module.css";
 
@@ -14,19 +13,8 @@ export default function PdfPortfolioProject({ project, nextProject }: { project:
     try { saved = localStorage.getItem("zoya-house-language") || "zh"; } catch {}
     setLanguage((query || saved) === "en" ? "en" : "zh");
   }, []);
-  function toggleLanguage() {
-    const next = language === "zh" ? "en" : "zh";
-    setLanguage(next);
-    try { localStorage.setItem("zoya-house-language", next); } catch {}
-    const url = new URL(location.href);
-    url.searchParams.set("lang", next);
-    history.replaceState(history.state, "", url);
-  }
   return (
     <div className={styles.root} lang={language === "zh" ? "zh-CN" : "en"}>
-      <div className={styles.navigation} onClick={(event) => {
-        if ((event.target as HTMLElement).closest("button.language-switch")) toggleLanguage();
-      }}><Header /></div>
       <main className={styles.pages} aria-label={project.title[language]}>
         {project.pages?.map((page, index) => (
           // Serve the lossless original directly: avoid recompressing fine drawing text.
@@ -40,8 +28,8 @@ export default function PdfPortfolioProject({ project, nextProject }: { project:
       </main>
       <footer className={styles.end}>
         {nextProject ? <Link prefetch={false} href={`/projects/${nextProject.slug}?lang=${language}`}>
-          <span>NEXT PROJECT →</span><strong>{nextProject.title[language]}</strong>
-        </Link> : <Link href={`/?lang=${language}`}><span>BACK TO DIRECTORY ↑</span></Link>}
+          <span>{language === "zh" ? "下一项目 →" : "NEXT PROJECT →"}</span><strong>{nextProject.slug === "xinhua-road" && language === "zh" ? "新华路城市更新" : nextProject.title[language]}</strong>
+        </Link> : <Link href={`/?lang=${language}`}><span>{language === "zh" ? "返回目录 ↑" : "BACK TO DIRECTORY ↑"}</span></Link>}
       </footer>
     </div>
   );

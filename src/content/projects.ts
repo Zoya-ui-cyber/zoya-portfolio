@@ -3,11 +3,20 @@ import type { Project } from "@/types/project";
 export const projects: Project[] = [
   {
     slug: "craft-academy",
+    // Switch to "custom" to restore the existing interactive page.
+    mode: "pdf",
+    pages: [
+      { src: "/projects/craft-academy/pdf/page-01.webp" },
+      { src: "/projects/craft-academy/pdf/page-02.webp" },
+      { src: "/projects/craft-academy/pdf/page-03.webp" },
+      { src: "/projects/craft-academy/pdf/page-04.webp" },
+      { src: "/projects/craft-academy/pdf/page-05.webp" },
+    ],
 
     collection: "selected",
     
     title: {
-      zh: "手工艺学院改造",
+      zh: "传习学院改造",
       en: "Craft Academy Renovation",
     },
 

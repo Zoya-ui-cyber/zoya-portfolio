@@ -23,7 +23,7 @@ export type Project = {
 
   mode?: "custom" | "pdf";
 
-  pages?: { src: string; width: number; height: number }[];
+  pages?: { src: string; width?: number; height?: number }[];
 
   slug: string;
 
