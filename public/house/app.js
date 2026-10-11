@@ -1,3 +1,4 @@
+import { openMailbox } from './mailbox.js';
 import { renderProfile, loadPortrait } from "./profile-content.js";
 import { categoryBySlug, profile } from './integration-config.js';
 import { language, setLanguage } from './language.js';
@@ -6,7 +7,7 @@ const data={about:{n:'01 / THE BEDROOM',title:'About me',body:'<p>我是 Zoya，
 const toolbar=document.querySelector('#room-toolbar'),roomControls=document.querySelector('#room-controls'),toggle=document.querySelector('#directory-toggle'),photoDialog=document.querySelector('#photo-dialog');
 let focusRoom=()=>{},setHover=()=>{},returnView=()=>{},adjustView=()=>{},resetCamera=()=>{},interact=()=>{},applyPortrait=()=>{},motion=!matchMedia('(prefers-reduced-motion: reduce)').matches,active=null;
 data.atrium={n:'05 / THE ATRIUM',title:'Leave a note',body:'<p>在树下，留下一句话。</p>'};
-const objects={atrium:[['guestbook','树下留言簿']],about:[['aboutArt','墙上挂画 · 关于我'],['photo','床头相框'],['lamp','床头灯'],['contact','露台椅 · 联系我']],portfolio:[['model','建筑模型'],['computer','电脑 · 空间作品'],['books','作品书架']],other:[['screen','影院屏幕'],['cinemaLamp','右墙壁灯']],awards:[['trophy','奖杯'],['certificates','证书']]};
+const objects={atrium:[['guestbook','树下留言簿'],['cat','和小猫打招呼']],about:[['aboutArt','墙上挂画 · 关于我'],['photo','床头相框'],['lamp','床头灯'],['contact','露台椅 · 社交媒体'],['chime','拨动风铃']],portfolio:[['mailbox','打开邮箱'],['model','建筑模型'],['computer','电脑 · 空间作品'],['books','作品书架']],other:[['screen','影院屏幕'],['cinemaLamp','右墙壁灯']],awards:[['trophy','奖杯'],['certificates','证书']]};
 function safeHistory(url){try{history.replaceState(null,'',url)}catch{}}
 function setDirectory(open){detail.hidden=!open;toggle.setAttribute('aria-expanded',String(open));toggle.textContent=open?'收起目录 −':'展开目录 +';document.body.classList.toggle('directory-open',open)}
 data.about.body+='<button class=resume-download disabled>下载简历 PDF · 待上传</button>';
@@ -17,7 +18,7 @@ document.querySelectorAll('[data-room]').forEach(b=>{b.addEventListener('click',
 document.querySelectorAll('.close,.return').forEach(b=>b.onclick=()=>{setDirectory(false);toggle.focus()});toggle.onclick=()=>setDirectory(detail.hidden);document.querySelector('.wordmark').onclick=e=>{e.preventDefault();reset()};document.querySelector('#reset').onclick=reset;document.querySelector('#back-room').onclick=reset;
 document.querySelector('#turn-left').onclick=()=>adjustView(-.12,0,0);document.querySelector('#turn-right').onclick=()=>adjustView(.12,0,0);document.querySelector('#zoom-in').onclick=()=>adjustView(0,0,.13);document.querySelector('#zoom-out').onclick=()=>adjustView(0,0,-.13);document.querySelector('#view-reset').onclick=()=>resetCamera();
 function updateMotion(){motionButton.textContent='动态视角：'+(motion?'开':'关');motionButton.setAttribute('aria-pressed',String(motion))}motionButton.onclick=()=>{motion=!motion;updateMotion()};updateMotion();
-document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!document.querySelector('#certificate-dialog')?.open&&!photoDialog.open&&!document.querySelector('#guestbook-dialog').open&&!document.querySelector('#contact-dialog').open){if(!detail.hidden){setDirectory(false);toggle.focus()}else if(active)reset()}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!document.querySelector('#certificate-dialog')?.open&&!photoDialog.open&&!document.querySelector('#guestbook-dialog').open&&!document.querySelector('#contact-dialog').open&&!document.querySelector('#mailbox-dialog').open){if(!detail.hidden){setDirectory(false);toggle.focus()}else if(active)reset()}});
 document.querySelector('#photo-close').onclick=()=>photoDialog.close();
 photoDialog.addEventListener('click',e=>{if(e.target===photoDialog){const r=photoDialog.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)photoDialog.close()}});
 let portraitURL=null;
@@ -425,12 +426,60 @@ hotspot('about','photo',-5.35,5.16,-.50,.49,.62,.14);hotspot('about','lamp',-5.9
 hotspot('portfolio','model',-4.65,1.55,.65,1.3,.60,.78);hotspot('portfolio','books',-2.84,1.8,-1.3,2.85,2.35,.6);
 hotspot('other','screen',4.15,2.13,-1.48,3.5,1.94,.15);hotspot('other','cinemaLamp',6.50,2.15,.18,.36,.54,.40);
 hotspot('awards','trophy',4.72,6.59,-1.27,2.1,.94,.6);hotspot('awards','certificates',4.8,5.54,-1.53,2.6,1.08,.25);hotspot('atrium','guestbook',-.63,.76,1.38,.65,.55,.60);
+
+// Small tactile details, with their own pivots and grounded supports.
+const mailbox=new T.Group();mailbox.position.set(-7.85,.13,1.04);scene.add(mailbox);
+cylinder(0,.45,0,.045,.9,'ink',mailbox);box(0,.015,0,.38,.03,.32,'ink',mailbox,false);
+softBox(0,1.01,0,.62,.40,.39,'blue',mailbox,.07);
+const mailDoor=new T.Group();mailDoor.position.set(0,.81,.205);mailbox.add(mailDoor);
+softBox(0,.20,0,.60,.38,.035,'blue',mailDoor,.025);box(0,.23,.026,.30,.025,.015,'ink',mailDoor,false);
+box(0,.09,.028,.22,.07,.015,'paper',mailDoor,false);
+let mailboxOpen=false;
+const cat=new T.Group();cat.position.set(.83,.14,1.10);scene.add(cat);
+const catBody=sphere(0,.26,0,.23,'wood',cat);catBody.scale.set(.75,1.1,1.25);
+for(const x of [-.13,.13])sphere(x,.07,.16,.085,'wood',cat).scale.set(1,.7,1.35);
+const catHead=new T.Group();catHead.position.set(0,.55,.13);cat.add(catHead);
+sphere(0,0,0,.18,'wood',cat).scale.set(.94,.92,1);
+for(const x of [-.115,.115]){const ear=new T.Mesh(new T.ConeGeometry(.08,.16,3),mats.wood);ear.position.set(x,.17,0);catHead.add(ear);sphere(x*.53,.015,.16,.018,'ink',catHead);}
+sphere(0,-.055,.178,.015,'ink',catHead);
+const tailPivot=new T.Group();tailPivot.position.set(.13,.20,-.16);cat.add(tailPivot);
+const tail=cylinder(.10,.09,0,.036,.32,'wood',tailPivot);tail.rotation.z=-.9;
+rod([-7.23,7.20,.25],[-8.03,7.20,.25],.018,'ink',scene);rod([-7.23,6.98,.25],[-7.65,7.20,.25],.013,'ink',scene);
+const chime=new T.Group();chime.position.set(-8.03,7.20,.25);a.add(chime);
+cylinder(0,-.18,0,.009,.36,'ink',chime);cylinder(0,-.38,0,.17,.035,'wood',chime);
+const chimeSwing=new T.Group();chimeSwing.position.y=-.40;chime.add(chimeSwing);
+for(const [i,x] of [-.11,0,.11].entries()){cylinder(x,-.12,0,.006,.24,'ink',chimeSwing);cylinder(x,-.34-i*.03,0,.025,.31+i*.06,'blue',chimeSwing);}
+let catTime=0,chimeTime=0;
+hotspot('portfolio','mailbox',-7.85,1.09,1.04,.72,.68,.55);
+hotspot('atrium','cat',.83,.54,1.10,.64,.92,.72);
+hotspot('about','chime',-8.03,6.65,.25,.62,1.15,.50);
+// Allow these small discoveries directly from the overview too.
+const discoveries=furniture.filter(m=>['mailbox','cat','chime'].includes(m.userData.key));
+const tooltip=document.createElement('div');tooltip.id='object-tooltip';tooltip.hidden=true;tooltip.dataset.noTranslate='';document.body.append(tooltip);
+const actionLabels={mailbox:['打开邮箱','Open mailbox'],cat:['和小猫打招呼','Say hello to the cat'],chime:['拨动风铃','Nudge the wind chime'],model:['转动建筑模型','Rotate the model'],photo:['查看照片','View photo'],aboutArt:['了解我','About me'],contact:['查看社交媒体','Social media'],lamp:['开关床头灯','Toggle bedside lamp'],cinemaLamp:['开关壁灯','Toggle wall light'],computer:['查看空间类作品','Explore spatial design'],books:['浏览作品书架','Browse projects'],screen:['切换屏幕画面','Change the screen'],trophy:['查看奖项','View awards'],certificates:['查看证书','View certificates'],guestbook:['留下留言','Leave a note']};
+const roomLabels={about:['进入卧室 · 关于我','Enter bedroom · About me'],portfolio:['进入书房 · 空间类作品','Enter study · Spatial design'],other:['进入影院 · 平面类作品','Enter cinema · Graphic design'],awards:['进入荣誉室','Enter awards gallery'],atrium:['走近树下留言簿','Explore the guestbook']};
+let litMeshes=[],edgeObjects=[];
+function clearFeedback(){for(const [mesh,material] of litMeshes){mesh.material.dispose();mesh.material=material;}litMeshes=[];for(const line of edgeObjects){line.parent.remove(line);line.geometry.dispose();line.material.dispose();}edgeObjects=[];tooltip.hidden=true;}
+function showFeedback(hit){clearFeedback();if(!hit)return;
+ const key=hit.userData.key;const selected=[];
+ if(key){const bounds=new T.Box3().setFromObject(hit);scene.traverse(m=>{if(!m.isMesh||m.material===hitMaterial||!m.material.emissive)return;const pos=new T.Vector3();m.getWorldPosition(pos);if(bounds.containsPoint(pos))selected.push(m);});}
+ else groups[hit.userData.room]?.traverse(m=>{if(m.isMesh&&m.material.emissive)selected.push(m)});
+ for(const mesh of selected){const original=mesh.material;mesh.material=original.clone();mesh.material.emissive.set(0x7998ad);mesh.material.emissiveIntensity=key?.20:.08;litMeshes.push([mesh,original]);
+ if(key){const edge=new T.LineSegments(new T.EdgesGeometry(mesh.geometry,32),new T.LineBasicMaterial({color:0x8ca9bb,transparent:true,opacity:.65,depthWrite:false}));mesh.add(edge);edgeObjects.push(edge);}}
+}
+let feedbackHit=null;
+function clearHover(){clearFeedback();feedbackHit=null;hoverObject=null;setHover(null);document.querySelectorAll('[data-object]').forEach(b=>b.classList.remove('active'));}
+
 const bedsideLight=new T.PointLight(0xffdeb0,0,3,2);bedsideLight.position.set(-5.91,5.27,-.6);scene.add(bedsideLight);
 const cinemaLight=new T.PointLight(0xffdeb0,0,4,2);cinemaLight.position.set(6.28,2.15,.18);scene.add(cinemaLight);
 bedsideBulb.material=bedsideBulb.material.clone();cinemaBulb.material=cinemaBulb.material.clone();
 let screenIndex=0;const states={lamp:false,cinemaLamp:false};
 interact=key=>{
  const hint=document.querySelector('#interaction-hint');
+ clearHover();
+ if(key==='mailbox'){mailboxOpen=true;openMailbox();return}
+ if(key==='cat'){catTime=2.4;hint.textContent='小猫向你打了个招呼';return}
+ if(key==='chime'){chimeTime=3;hint.textContent='风铃轻轻摇摆';return}
  if(key==='contact'){document.querySelector('#contact-dialog').showModal();return}
  if(key==='aboutArt'){fillDirectory();setDirectory(true);return}
  if(key==='guestbook'){openGuestbook();return}
@@ -441,23 +490,27 @@ interact=key=>{
  if(key==='model'){modelTurn();hint.textContent='模型已转动 · 再次点击换个方向';return}
  fillDirectory();setDirectory(true);
 };
-function modelTurn(){miniature.rotation.y+=Math.PI/4}
+let modelTarget=0;function modelTurn(){modelTarget+=Math.PI/4}
 let hover=null,hoverObject=null,mouse=new T.Vector2(),pointer=new T.Vector2(0,0),view={x:-.725,y:3.67,yaw:0,pitch:0,distance:29},desired={...view},baseDistance=29,roomDistance=14,zoomFactor=1;
 setHover=id=>{hover=id;document.querySelectorAll('.room-label').forEach(el=>el.classList.toggle('active',el.id==='label-'+id));host.style.cursor=id?'pointer':active?'grab':'default'};
 const atriumEntry=box(.1,1.0,2.01,1.35,1.60,.04,hitMaterial,scene,false);atriumEntry.userData.room='atrium';targets.push(atriumEntry);
 const ray=new T.Raycaster();
-function hitAt(e){const rect=host.getBoundingClientRect();mouse.set((e.clientX-rect.left)/rect.width*2-1,-(e.clientY-rect.top)/rect.height*2+1);pointer.copy(mouse);ray.setFromCamera(mouse,camera);return ray.intersectObjects(active?furniture.filter(m=>m.userData.room===active):targets)[0]?.object}
-function hoverAt(e){const hit=hitAt(e);if(!active){setHover(hit?.userData.room||null);return}hoverObject=hit?.userData.key||null;host.style.cursor=hoverObject?'pointer':'grab';document.querySelectorAll('[data-object]').forEach(b=>b.classList.toggle('active',b.dataset.object===hoverObject))}
+function hitAt(e){const rect=host.getBoundingClientRect();mouse.set((e.clientX-rect.left)/rect.width*2-1,-(e.clientY-rect.top)/rect.height*2+1);pointer.copy(mouse);ray.setFromCamera(mouse,camera);if(!active){const discovery=ray.intersectObjects(discoveries)[0]?.object;if(discovery)return discovery;}return ray.intersectObjects(active?furniture.filter(m=>m.userData.room===active):targets)[0]?.object}
+function hoverAt(e){if(document.querySelector('dialog[open]')){clearHover();return;}const hit=hitAt(e);hoverObject=hit?.userData.key||null;setHover(!active&&!hoverObject?hit?.userData.room||null:null);host.style.cursor=hit?'pointer':active?'grab':'default';
+ if(hit!==feedbackHit){feedbackHit=hit;showFeedback(hit);}
+ if(hit){const labels=hoverObject?actionLabels[hoverObject]:roomLabels[hit.userData.room];const label=labels?.[language==='en'?1:0]||'';if(tooltip.textContent!==label)tooltip.textContent=label;tooltip.hidden=false;const w=tooltip.offsetWidth,h=tooltip.offsetHeight;tooltip.style.left=Math.max(8,Math.min(e.clientX+16,innerWidth-w-8))+'px';tooltip.style.top=Math.max(8,Math.min(e.clientY+18,innerHeight-h-8))+'px';}else tooltip.hidden=true;
+ document.querySelectorAll('[data-object]').forEach(b=>b.classList.toggle('active',b.dataset.object===hoverObject));}
+
 let drag=null;
 host.addEventListener('pointerdown',e=>{if(e.button!==0)return;host.focus({preventScroll:true});drag={id:e.pointerId,x:e.clientX,y:e.clientY,lastX:e.clientX,lastY:e.clientY,moved:false};host.setPointerCapture(e.pointerId)});
-host.addEventListener('pointermove',e=>{if(drag&&drag.id===e.pointerId){const dx=e.clientX-drag.lastX,dy=e.clientY-drag.lastY;drag.lastX=e.clientX;drag.lastY=e.clientY;if(Math.hypot(e.clientX-drag.x,e.clientY-drag.y)>5)drag.moved=true;if(active&&drag.moved){adjustView(-dx*.004,dy*.003,0);host.style.cursor='grabbing';return}}hoverAt(e)});
-host.addEventListener('pointerup',e=>{if(!drag||drag.id!==e.pointerId)return;const click=!drag.moved;drag=null;if(host.hasPointerCapture(e.pointerId))host.releasePointerCapture(e.pointerId);if(click){const hit=hitAt(e);if(active&&hit)interact(hit.userData.key);else if(hit)selectRoom(hit.userData.room)}hoverAt(e)});
-host.addEventListener('pointercancel',()=>{drag=null});host.addEventListener('lostpointercapture',()=>{drag=null});host.addEventListener('pointerleave',()=>{if(!drag){pointer.set(0,0);setHover(null);hoverObject=null}});
+host.addEventListener('pointermove',e=>{if(drag&&drag.id===e.pointerId){const dx=e.clientX-drag.lastX,dy=e.clientY-drag.lastY;drag.lastX=e.clientX;drag.lastY=e.clientY;if(Math.hypot(e.clientX-drag.x,e.clientY-drag.y)>5)drag.moved=true;if(active&&drag.moved){clearHover();adjustView(-dx*.004,dy*.003,0);host.style.cursor='grabbing';return}}hoverAt(e)});
+host.addEventListener('pointerup',e=>{if(!drag||drag.id!==e.pointerId)return;const click=!drag.moved;drag=null;if(host.hasPointerCapture(e.pointerId))host.releasePointerCapture(e.pointerId);if(click){const hit=hitAt(e);if(hit?.userData.key)interact(hit.userData.key);else if(hit)selectRoom(hit.userData.room)}hoverAt(e)});
+host.addEventListener('pointercancel',()=>{drag=null});host.addEventListener('lostpointercapture',()=>{drag=null});host.addEventListener('pointerleave',()=>{if(!drag){pointer.set(0,0);clearHover()}});
 host.addEventListener('wheel',e=>{if(!active)return;e.preventDefault();adjustView(0,0,-Math.sign(e.deltaY)*.055)},{passive:false});
 host.addEventListener('keydown',e=>{if(!active)return;const keys={ArrowLeft:[-.07,0,0],ArrowRight:[.07,0,0],ArrowUp:[0,.04,0],ArrowDown:[0,-.04,0],'+':[0,0,.1],'=':[0,0,.1],'-':[0,0,-.1]};if(keys[e.key]){e.preventDefault();adjustView(...keys[e.key])}});
 function fitDistance(id){const r=rooms[id],tangent=Math.tan(T.MathUtils.degToRad(camera.fov/2));return Math.max((r.h/2+.9)/tangent,(r.w/2+.5)/(tangent*camera.aspect))+1.9}
-focusRoom=id=>{setHover(null);zoomFactor=1;roomDistance=fitDistance(id);const r=rooms[id];desired={x:r.center[0],y:r.center[1],yaw:0,pitch:0,distance:roomDistance}};
-returnView=()=>{desired={x:-.725,y:3.67,yaw:0,pitch:0,distance:baseDistance};setHover(null)};
+focusRoom=id=>{clearHover();zoomFactor=1;roomDistance=fitDistance(id);const r=rooms[id];desired={x:r.center[0],y:r.center[1],yaw:0,pitch:0,distance:roomDistance}};
+returnView=()=>{clearHover();desired={x:-.725,y:3.67,yaw:0,pitch:0,distance:baseDistance};setHover(null)};
 adjustView=(yaw,pitch,zoom)=>{if(!active)return;desired.yaw=T.MathUtils.clamp(desired.yaw+yaw,-.32,.32);desired.pitch=T.MathUtils.clamp(desired.pitch+pitch,-.12,.23);zoomFactor=T.MathUtils.clamp(zoomFactor+zoom,.82,1.42);desired.distance=roomDistance/zoomFactor};resetCamera=()=>{if(active)focusRoom(active)};
 let firstFit=true;
 function resize(){
@@ -477,7 +530,15 @@ function resize(){
  firstFit=false;
 }
 new ResizeObserver(resize).observe(host);window.addEventListener('resize',resize);resize();
-let previous=performance.now();function render(now){const dt=Math.min((now-previous)/1000,.05);previous=now;const t=motion?1-Math.exp(-dt*7):1;for(const k of Object.keys(view))view[k]+=(desired[k]-view[k])*t;const dx=motion&&!active?pointer.x*.10:0;const horizontal=view.distance*Math.cos(view.pitch);camera.position.set(view.x+Math.sin(view.yaw)*horizontal+dx,view.y+Math.sin(view.pitch)*view.distance,Math.cos(view.yaw)*horizontal);camera.lookAt(view.x,view.y,0);renderer.render(scene,camera);requestAnimationFrame(render)}requestAnimationFrame(render);document.querySelector('#loading').hidden=true;
+let previous=performance.now();function render(now){const dt=Math.min((now-previous)/1000,.05);previous=now;const t=motion?1-Math.exp(-dt*7):1;for(const k of Object.keys(view))view[k]+=(desired[k]-view[k])*t;const dx=motion&&!active?pointer.x*.10:0;const horizontal=view.distance*Math.cos(view.pitch);camera.position.set(view.x+Math.sin(view.yaw)*horizontal+dx,view.y+Math.sin(view.pitch)*view.distance,Math.cos(view.yaw)*horizontal);camera.lookAt(view.x,view.y,0);const ease=1-Math.exp(-dt*9),reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+ miniature.rotation.y+=(modelTarget-miniature.rotation.y)*(reduce?1:ease);
+ if(!document.querySelector('#mailbox-dialog').open)mailboxOpen=false;
+ mailDoor.rotation.x+=((mailboxOpen?1.25:0)-mailDoor.rotation.x)*(reduce?1:ease);
+ catTime=Math.max(0,catTime-dt);chimeTime=Math.max(0,chimeTime-dt);
+ catHead.rotation.y=catTime&&!reduce?Math.sin((2.4-catTime)*3)*.38* Math.min(1,catTime):0;
+ tailPivot.rotation.z=catTime&&!reduce?Math.sin((2.4-catTime)*10)*.35*Math.min(1,catTime):0;
+ chimeSwing.rotation.z=chimeTime&&!reduce?Math.sin((3-chimeTime)*8)*.22*chimeTime/3:0;
+ renderer.render(scene,camera);requestAnimationFrame(render)}requestAnimationFrame(render);document.querySelector('#loading').hidden=true;
 renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();document.querySelector('#fallback').hidden=false;host.hidden=true});
 }catch(error){console.error('3D scene unavailable',error);document.querySelector('#canvas').hidden=true;document.querySelector('#fallback').hidden=false;document.querySelector('#loading').hidden=true;motionButton.hidden=true;}
 
@@ -505,8 +566,8 @@ window.addEventListener('message',event=>{
  linkedProjects=event.data.projects.filter(p=>typeof p.slug==='string'&&p.title&&Array.isArray(p.category));setLanguage(event.data.language);if(active)fillDirectory();
 });
 if(parent!==window)parent.postMessage({type:'house-ready'},location.origin);
-if(profile.email||profile.socials.length){const dl=document.querySelector('#contact-dialog dl');dl.replaceChildren();
+if(profile.socials.length){const dl=document.querySelector('#contact-dialog dl');dl.replaceChildren();
  const add=(label,text,href)=>{const dt=document.createElement('dt'),dd=document.createElement('dd'),a=document.createElement('a');dt.textContent=label;a.textContent=text;a.href=href;a.target='_blank';a.rel='noopener noreferrer';dd.append(a);dl.append(dt,dd);};
- if(profile.email)add('邮箱',profile.email,'mailto:'+profile.email);
+
  for(const social of profile.socials)if(/^https?:\/\//.test(social.url))add(social.label,social.account,social.url);
 }
