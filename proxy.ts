@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/proxy";
 
 export async function proxy(request: NextRequest) {
-  if (request.nextUrl.pathname === "/little-table" || request.nextUrl.pathname.startsWith("/little-table/")) return NextResponse.next();
+  if (request.nextUrl.pathname === "/little-table" || request.nextUrl.pathname.startsWith("/little-table/") || request.nextUrl.pathname.startsWith("/api/little-table/")) return NextResponse.next();
   return await updateSession(request);
 }
 

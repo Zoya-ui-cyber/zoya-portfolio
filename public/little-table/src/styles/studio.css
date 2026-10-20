@@ -6,3 +6,5 @@
 @media(max-width:760px){.home-landing{padding:0}.food-parade{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:22px 0 64px}.food-parade>div{border-radius:24px}.food-parade>div:nth-child(even){transform:translateY(12px)}.home-intro h1{font-size:35px;margin-bottom:34px}.home-intro .hero-links{gap:8px}.home-intro .primary{width:100%}.table-footer{display:none}.menu-panel .row.between a{font-size:11px;padding:6px}.cart-item .ingredient-fallback{width:32px;height:32px}}
 .grocery-name,.menu-info a,.card-copy h3{overflow-wrap:anywhere}
 .verification-panel{display:flex;flex-direction:column;gap:20px;text-align:center;align-items:center}.verification-panel h1{font-size:28px}.verification-panel p{font-size:15px;line-height:1.8}.verification-panel small{font-size:12px;color:var(--muted)}.verification-panel .button{width:100%}.verification-address{overflow-wrap:anywhere;max-width:100%;color:var(--muted)}
+
+#copyright{text-align:center;font-size:11px;color:var(--muted);padding:16px 24px 24px}body[data-view=cooking] #copyright{display:none}
