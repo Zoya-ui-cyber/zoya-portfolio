@@ -1,0 +1,10 @@
+export const STATUS_ORDER = { pending: 0, bought: 1, owned: 2 };
+export function statusFor(item, checks) { const c=checks[item.id]; return c && c.signature===item.signature && STATUS_ORDER[c.status]!==undefined ? c.status : 'pending'; }
+export function setItemStatus(checks,item,status) { if (!(status in STATUS_ORDER)) throw Error('Invalid grocery status'); return {...checks,[item.id]:{status,signature:item.signature}}; }
+export function purchaseAll(items,checks,undo=false) { let next={...checks}; for(const item of items)if(statusFor(item,checks)!=='owned')next=setItemStatus(next,item,undo?'pending':'bought'); return next; }
+export function sortedItems(items,checks){return [...items].sort((a,b)=>STATUS_ORDER[statusFor(a,checks)]-STATUS_ORDER[statusFor(b,checks)]);}
+export function shoppingComplete(items,checks){return items.length>0 && items.every(i=>statusFor(i,checks)!=='pending');}
+export function plateAnchors(count){ if(count===1)return [[.5,.47]];if(count===2)return [[.31,.45],[.67,.52]];if(count===3)return [[.29,.32],[.7,.35],[.49,.74]];return [[.12,.24],[.31,.17],[.5,.27],[.7,.16],[.88,.31],[.12,.74],[.31,.65],[.5,.78],[.7,.67],[.88,.78]].slice(0,Math.min(count,10)); }
+export function freshState(saved=[]){return {custom:[],saved,plan:{},checks:{},prices:{},records:[],submissions:[],journey:null};}
+export function validateRecipe(r){if(!r||typeof r.title!=='string'||!r.title.trim()||!Array.isArray(r.ingredients)||!r.ingredients.length||!Array.isArray(r.steps)||!r.steps.length)throw Error('Invalid recipe');if(r.ingredients.some(x=>typeof x!=='string')||r.steps.some(x=>typeof x!=='string'))throw Error('Invalid recipe');if(!Number.isFinite(Number(r.time))||Number(r.time)<=0||Number(r.time)>1440||Number(r.servings||2)<=0||Number(r.servings||2)>30)throw Error('Invalid recipe');return r;}
+export function safeImage(src){return typeof src==='string'&&(/^data:image\/(png|jpeg|webp);base64,[a-z0-9+/=]+$/i.test(src)||/^assets\/ui\/(dish|ingredient)\/[a-z0-9-]+\.svg$/.test(src))?src:null;}
