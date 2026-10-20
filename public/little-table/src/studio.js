@@ -9,6 +9,7 @@ import { norm, matchesCategory } from './core/ingredients.js';
 import { buildShoppingList, groupFor } from './core/shopping.js';
 import { statusFor,setItemStatus,purchaseAll,sortedItems,shoppingComplete,plateAnchors,freshState,validateRecipe,safeImage } from './core/meal-state.js';
 import * as cloud from './core/cloud.js';
+import { actionError } from './core/action-errors.js';
 import { beginCooking,normalizeCooking,moveTicket,placeTicket,serveTicket,allServed,finishCooking } from './core/cooking.js';
 import { cookingView,cookingHistory } from './features/cooking-view.js';
 import { compressMealPhoto } from './core/meal-photo.js';
@@ -124,12 +125,12 @@ document.addEventListener('click',async event=>{const f=event.target.closest('[d
  if(a==='my-posts'){let posts=data.submissions;if(cloudReady)posts=await cloud.db('submissions?author_id=eq.'+profile.id+'&select=id,recipe,status,created_at');openDialog(`<h2>${L('我的投稿','My submissions')}</h2><div class="stack">${posts.map(s=>`<div><strong>${esc(s.recipe?(lang==='en'?s.recipe.en?.title||s.recipe.title:s.recipe.title):title(recipe(s.recipeId)||{title:''}))}</strong><p>${esc(({pending:L('待审核','Pending'),approved:L('已公开','Published'),rejected:L('已退回','Returned')})[s.status]||s.status)}</p></div>`).join('')||L('暂无投稿','No submissions yet')}</div>`);return;}
  if(a==='logout'){await cloud.signOut();profile=null;cloudReady=false;activeKey='guest';data=normalizeData(read('little-table:guest',freshState()));render();return;}
  if(a==='refresh-account'){await account();render();return;}
- if(a==='admin-user'){await cloud.rpc('review_user',{target_id:id,new_status:b.dataset.status});await adminLoad();toast(L('已更新','Updated'));return;}
+ if(a==='admin-user'){b.disabled=true;try{await cloud.rpc('review_user',{target_id:id,new_status:b.dataset.status});}catch(error){toast(actionError(error,lang));return;}finally{b.disabled=false;}try{await adminLoad();toast(L('审核已更新','Review updated'));}catch{toast(L('审核已提交，但列表刷新失败，请刷新页面核对。','Review submitted, but the list could not refresh. Reload to confirm.'));}return;}
  if(a==='review'){const s=ui.adminPosts.find(x=>x.id===id);openDialog(`<h2>${esc(s.recipe.title)}</h2><h3>${L('食材','Ingredients')}</h3><p>${s.recipe.ingredients.map(esc).join('<br>')}</p><h3>${L('做法','Method')}</h3><ol>${s.recipe.steps.map(x=>'<li>'+esc(x)+'</li>').join('')}</ol>`);return;}
  if(a==='admin-post'){await cloud.rpc('review_submission',{target_id:id,new_status:b.dataset.status});await adminLoad();await refreshPublic();toast(L('已更新','Updated'));return;}
  if(a==='install'&&installPrompt){await installPrompt.prompt();installPrompt=null;render();return;}
  if(a==='install-help'){openDialog(`<h2>${L('添加到手机桌面','Add to home screen')}</h2><p>${L('iPhone：用 Safari 打开，点分享，再选择“添加到主屏幕”。Android：打开浏览器菜单，选择“安装应用”或“添加到主屏幕”。','iPhone: open in Safari, tap Share, then Add to Home Screen. Android: open your browser menu and choose Install app or Add to Home screen.')}</p>`);return;}
- }catch(error){console.error(error);toast(L('操作未完成，请检查网络后重试','Could not complete this action. Check your connection and try again'));}
+ }catch(error){console.error(error);toast(actionError(error,lang));}
 });
 let draggedTicket=null;
 document.addEventListener('dragstart',e=>{const ticket=e.target.closest('.cook-ticket[draggable="true"]');if(!ticket)return;draggedTicket=ticket.dataset.ticket;e.dataTransfer.setData('text/plain',draggedTicket);e.dataTransfer.effectAllowed='move';ticket.classList.add('dragging');});
