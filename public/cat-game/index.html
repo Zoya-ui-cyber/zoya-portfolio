@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A Cat Saves the Day · 小猫拯救的一天</title>
+<link rel="icon" href="TemplateData/favicon.ico">
+<style>
+  :root { --bg: #f6f1e7; --ink: #3b332b; --soft: #8a7d6e; --line: #e2d8c6; --accent: #c9773f; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink);
+    font: 14px/1.5 "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; }
+  body { display: flex; flex-direction: column; }
+  header, footer { display: flex; align-items: center; gap: 16px; padding: 10px 20px; flex-wrap: wrap; }
+  header h1 { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: .02em; }
+  header h1 span { color: var(--soft); font-weight: 400; margin-left: 8px; }
+  header a { margin-left: auto; color: var(--soft); text-decoration: none; }
+  header a:hover { color: var(--ink); }
+  main { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; padding: 0 20px; }
+  #stage { position: relative; aspect-ratio: 16 / 10; width: min(100%, calc((100vh - 120px) * 1.6)); background: #1d1915;
+    border-radius: 10px; overflow: hidden; box-shadow: 0 8px 30px rgba(60, 45, 30, .18); }
+  #unity-canvas { display: block; width: 100%; height: 100%; outline: none; }
+  #loading { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 14px; background: var(--bg); color: var(--soft); }
+  #bar { width: 220px; height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; }
+  #bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+  footer { color: var(--soft); font-size: 13px; justify-content: center; }
+  kbd { font: 12px ui-monospace, Consolas, monospace; padding: 1px 6px; border: 1px solid var(--line); border-bottom-width: 2px;
+    border-radius: 4px; background: #fffaf2; color: var(--ink); }
+  button { font: inherit; color: var(--ink); background: #fffaf2; border: 1px solid var(--line); border-radius: 6px; padding: 4px 12px; cursor: pointer; }
+  button:hover { border-color: var(--soft); }
+  #mobile { display: none; position: absolute; inset: 0; align-items: center; justify-content: center; text-align: center; padding: 24px;
+    background: var(--bg); color: var(--ink); }
+</style>
+</head>
+<body>
+<header>
+  <h1>A Cat Saves the Day<span>小猫拯救的一天 · 试玩版</span></h1>
+  <a href="/">← 返回作品集 / Portfolio</a>
+</header>
+<main>
+  <div id="stage">
+    <canvas id="unity-canvas" tabindex="-1"></canvas>
+    <div id="loading"><div id="msg">正在加载… Loading</div><div id="bar"><i></i></div><div id="pct">0%</div></div>
+    <div id="mobile"><div>这个试玩版需要键盘，请在电脑浏览器中打开。<br>This demo needs a keyboard — please open it on a computer.</div></div>
+  </div>
+</main>
+<footer>
+  <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 移动 Move</span>
+  <span><kbd>Space</kbd> 跳 Jump</span>
+  <span><kbd>E</kbd> 互动 / 叼 Interact</span>
+  <span><kbd>F</kbd> 拍 Swipe</span>
+  <span><kbd>M</kbd> 喵 Meow</span>
+  <span>先点击画面再操作 · Click the game first</span>
+  <button id="fs" type="button">全屏 Fullscreen</button>
+</footer>
+<script>
+  var canvas = document.getElementById("unity-canvas");
+  if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+    document.getElementById("loading").style.display = "none";
+    document.getElementById("mobile").style.display = "flex";
+  } else {
+    var script = document.createElement("script");
+    script.src = "Build/cat-game.loader.js";
+    script.onload = function () {
+      createUnityInstance(canvas, {
+        dataUrl: "Build/cat-game.data.unityweb",
+        frameworkUrl: "Build/cat-game.framework.js.unityweb",
+        codeUrl: "Build/cat-game.wasm.unityweb",
+        streamingAssetsUrl: "StreamingAssets",
+        companyName: "Zoya Yin",
+        productName: "A Cat Saves the Day",
+        productVersion: "demo",
+      }, function (progress) {
+        var p = Math.round(progress * 100);
+        document.querySelector("#bar i").style.width = p + "%";
+        document.getElementById("pct").textContent = p + "%";
+      }).then(function (instance) {
+        document.getElementById("loading").style.display = "none";
+        canvas.focus();
+        document.getElementById("fs").onclick = function () { instance.SetFullscreen(1); };
+      }).catch(function (message) {
+        document.getElementById("msg").textContent = "加载失败 Failed to load: " + message;
+      });
+    };
+    document.body.appendChild(script);
+  }
+</script>
+</body>
+</html>
