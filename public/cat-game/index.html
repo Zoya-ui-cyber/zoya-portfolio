@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>米利 Millie · 试玩版</title>
 <meta name="description" content="米利 Millie — 一只小猫，和很久以前的一个早晨。Zoya Yin 的游戏试玩版。">
-<link rel="icon" href="TemplateData/favicon.ico">
+<link rel="icon" href="/cat-game/TemplateData/favicon.ico">
 <style>
   /* Same palette as the game's title screen: warm cream, oat, one soft coral accent, warm brown ink. */
   :root { --bg: #f8f1e6; --paper: #fffbf5; --ink: #4e4039; --soft: #8c7d72; --line: #e7d5b9; --coral: #e8958a; --coral-d: #cf7c70; }
@@ -73,13 +73,13 @@
     document.getElementById("mobile").style.display = "flex";
   } else {
     var script = document.createElement("script");
-    script.src = "Build/cat-game.loader.js";
+    script.src = "/cat-game/Build/cat-game.loader.js";
     script.onload = function () {
       createUnityInstance(canvas, {
-        dataUrl: "Build/cat-game.data.unityweb",
-        frameworkUrl: "Build/cat-game.framework.js.unityweb",
-        codeUrl: "Build/cat-game.wasm.unityweb",
-        streamingAssetsUrl: "StreamingAssets",
+        dataUrl: "/cat-game/Build/cat-game.data.unityweb",
+        frameworkUrl: "/cat-game/Build/cat-game.framework.js.unityweb",
+        codeUrl: "/cat-game/Build/cat-game.wasm.unityweb",
+        streamingAssetsUrl: "/cat-game/StreamingAssets",
         companyName: "Zoya Yin",
         productName: "Millie",
         productVersion: "demo",
