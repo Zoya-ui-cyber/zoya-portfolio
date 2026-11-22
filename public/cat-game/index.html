@@ -49,6 +49,8 @@
   button { font: 700 14px "Milli Rounded", sans-serif; color: var(--sage-dd); background: var(--cream); border: 0; border-radius: 999px; padding: 7px 18px; cursor: pointer;
     box-shadow: 0 3px 0 var(--sage-dd); transition: transform .12s, background .12s; }
   button:hover, button:focus-visible { background: var(--pink); outline: none; transform: translateY(-1px); }
+  button.survey { background: var(--pink); }
+  button.survey:hover, button.survey:focus-visible { background: var(--cream); }
   button:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--sage-dd); }
   #mobile { display: none; position: absolute; inset: 0; align-items: center; justify-content: center; text-align: center; padding: 24px; background: var(--sage); color: var(--cream); }
   @media (max-width: 640px) { #loading .panel { left: 50%; transform: translate(-50%, -50%); align-items: center; } }
@@ -89,8 +91,34 @@
   <span><kbd>L</kbd> 中 / EN</span>
   <span>先点一下画面再操作 · Click the game first</span>
   <button id="fs" type="button">全屏 Fullscreen</button>
+  <button id="survey" type="button" class="survey" hidden>试玩问卷 Survey</button>
 </footer>
 <script>
+  // The play-test survey (Tally). Opens by itself once the player reaches the end of the game (the game calls
+  // milliSurvey.finished), and any time from the footer button. Put the Tally form id here to switch it on.
+  var SURVEY_FORM_ID = "peDW8y";
+  window.milliSurvey = {
+    open: function (reason, lang) {
+      if (!SURVEY_FORM_ID) return;
+      if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen();
+      var go = function () {
+        window.Tally.openPopup(SURVEY_FORM_ID, { layout: "modal", width: 720, overlay: true, emoji: { text: "🐾", animation: "wave" },
+          hiddenFields: { reached_end: reason === "end" ? "yes" : "no", game_lang: lang || "" } });
+      };
+      if (window.Tally) go(); else {
+        var t = document.createElement("script"); t.src = "https://tally.so/widgets/embed.js"; t.onload = go; document.body.appendChild(t);
+      }
+    },
+    finished: function (lang) {
+      var key = "milli-survey-shown";
+      try { if (sessionStorage.getItem(key)) return; sessionStorage.setItem(key, "1"); } catch (e) {}
+      setTimeout(function () { window.milliSurvey.open("end", lang); }, 2500);
+    }
+  };
+  if (SURVEY_FORM_ID) {
+    var sb = document.getElementById("survey"); sb.hidden = false;
+    sb.onclick = function () { window.milliSurvey.open("button", ""); };
+  }
   var canvas = document.getElementById("unity-canvas");
   if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
     document.getElementById("loading").style.display = "none";
