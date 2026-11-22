@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>米利 Millie · 试玩版</title>
-<meta name="description" content="米利 Millie — 一只小猫，和很久以前的一个早晨。Zoya Yin 的游戏试玩版。">
+<title>米利 Milli · 试玩版</title>
+<meta name="description" content="米利 Milli — 一只小猫，和很久以前的一个早晨。Zoya Yin 的游戏试玩版。">
 <link rel="icon" href="/cat-game/TemplateData/favicon.ico">
 <style>
   /* Same palette as the game's title screen: warm cream, oat, one soft coral accent, warm brown ink. */
@@ -41,7 +41,7 @@
 </head>
 <body>
 <header>
-  <a class="logo" href="/cat-game/"><b>米利</b><span>Millie</span></a>
+  <a class="logo" href="/cat-game/"><b>米利</b><span>Milli</span></a>
   <span class="tag">试玩版 · Demo</span>
   <a class="back" href="/">← 返回作品集 / Portfolio</a>
 </header>
@@ -50,7 +50,7 @@
     <canvas id="unity-canvas" tabindex="-1"></canvas>
     <div id="loading">
       <svg class="paw" viewBox="0 0 64 64" aria-hidden="true"><g fill="#e8958a"><ellipse cx="32" cy="40" rx="14" ry="12"/><circle cx="15" cy="24" r="6"/><circle cx="25" cy="14" r="6"/><circle cx="39" cy="14" r="6"/><circle cx="49" cy="24" r="6"/></g></svg>
-      <div id="msg">米利正在醒来… Waking Millie up</div>
+      <div id="msg">米利正在醒来… Waking Milli up</div>
       <div id="bar"><i></i></div><div id="pct">0%</div>
     </div>
     <div id="mobile"><div>这个试玩版需要键盘，请在电脑浏览器中打开。<br>This demo needs a keyboard — please open it on a computer.</div></div>
@@ -63,6 +63,7 @@
   <span><kbd>F</kbd> 拍爪 Swipe</span>
   <span><kbd>M</kbd> 喵 Meow</span>
   <span><kbd>Tab</kbd> 任务清单 Tasks</span>
+  <span>按住 <kbd>R</kbd> 看更远 Hold to see more</span>
   <span><kbd>L</kbd> 中 / EN</span>
   <span>先点一下画面再操作 · Click the game first</span>
   <button id="fs" type="button">全屏 Fullscreen</button>
@@ -82,7 +83,7 @@
         codeUrl: "/cat-game/Build/cat-game.wasm.unityweb",
         streamingAssetsUrl: "/cat-game/StreamingAssets",
         companyName: "Zoya Yin",
-        productName: "Millie",
+        productName: "Milli",
         productVersion: "demo",
       }, function (progress) {
         var p = Math.round(progress * 100);
