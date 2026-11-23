@@ -1,0 +1,35 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>林间溪流</title>
+<style>
+body{margin:0;height:100vh;display:flex;flex-direction:column;background:#2B1B10;color:#FFF1D6;font:14px "Microsoft YaHei",sans-serif;overflow:hidden}
+canvas{flex:1;min-height:0;width:100%;display:block;cursor:pointer}
+nav{display:flex;gap:12px;align-items:center;padding:8px 14px}button{font:inherit;background:#F5BE34;color:#3A2415;border:0;border-radius:7px;padding:4px 14px;cursor:pointer;min-width:62px}
+input{flex:1;accent-color:#F5BE34}span{font-variant-numeric:tabular-nums}
+body.mini nav{display:none}
+</style>
+<canvas id="c" aria-label="林间溪流动画"></canvas><nav><button id="p">播放</button><input id="r" type="range" min="0" max="150" step=".1" value="0" aria-label="进度"><span id="t"></span></nav>
+<script>
+// 本地绘制的示意短片，没有使用任何第三方视频
+const c=document.getElementById('c'),g=c.getContext('2d'),$=i=>document.getElementById(i),LEN=150;let t=0,on=false,last=0;
+const f=s=>(s/60|0)+':'+String(s%60|0).padStart(2,'0');
+function ui(){$('p').textContent=on?'暂停':t>=LEN?'重播':'播放';$('r').value=t;$('t').textContent=f(t)+' / '+f(LEN)}
+function hill(y,a,k,col,p){g.fillStyle=col;g.beginPath();g.moveTo(0,90);for(let x=0;x<=160;x+=2)g.lineTo(x,y+Math.sin(x*k+p)*a+Math.sin(x*k*2.3+p*2)*a*.4);g.lineTo(160,90);g.fill()}
+function tree(x,y,s,col){g.fillStyle='#6B431F';g.fillRect(x-s*.08,y-s*.5,s*.16,s*.5);g.fillStyle=col;for(const[a,b,r]of[[0,-.95,.36],[-.25,-.7,.3],[.26,-.68,.31]]){g.beginPath();g.ellipse(x+a*s+Math.sin(t*1.1+x)*.5,y+b*s,r*s,r*s*.9,0,0,7);g.fill()}}
+function frame(){
+ const w=c.width=c.clientWidth*devicePixelRatio,h=c.height=c.clientHeight*devicePixelRatio;if(!w||!h)return;const s=Math.max(w/160,h/90);g.setTransform(s,0,0,s,(w-160*s)/2,(h-90*s)/2);
+ const d=t/LEN,mix=(a,b)=>`rgb(${a.map((v,i)=>v+(b[i]-v)*d|0)})`;
+ g.fillStyle=mix([214,232,232],[250,196,128]);g.fillRect(-60,-60,300,220);
+ g.fillStyle=mix([255,241,214],[232,102,42]);g.beginPath();g.arc(28+d*95,24+d*14,8,0,7);g.fill();
+ g.fillStyle='#FFFDF6';for(let i=0;i<3;i++){const x=(i*70+t*2.2)%220-30;g.beginPath();g.ellipse(x,14+i*7,11,3,0,0,7);g.ellipse(x+7,12+i*7,7,3.4,0,0,7);g.fill()}
+ hill(46,5,.05,'#B7C77F',1);hill(54,4,.07,'#8FB04D',3);
+ for(let i=0;i<9;i++)tree(8+i*19,60+(i*37%5),17+(i*13%7),i%2?'#5E8A35':'#7FA83A');
+ g.fillStyle='#8FB04D';g.fillRect(-60,62,300,60);
+ g.fillStyle='#7FA9B8';g.beginPath();g.moveTo(70,61);g.bezierCurveTo(60,70,105,74,60,92);g.lineTo(125,92);g.bezierCurveTo(135,76,92,70,82,61);g.fill();
+ g.strokeStyle='#E8F3F1';g.lineWidth=.7;g.lineCap='round';for(let i=0;i<14;i++){const q=((i*.137+t*.09)%1),x=78+Math.sin(q*5+i)*9+q*14,y=63+q*26;g.beginPath();g.moveTo(x,y);g.lineTo(x+3+q*3,y+1);g.stroke()}
+ g.fillStyle='#9A8A74';for(const[x,y,r]of[[64,80,5],[118,78,4],[92,86,3.2],[130,86,6]]){g.beginPath();g.ellipse(x,y,r,r*.6,0,0,7);g.fill()}
+ for(let i=0;i<6;i++){const x=(i*31+t*5)%180-10,y=40+Math.sin(t*1.7+i*2)*6+i*5;g.fillStyle=i%2?'#E8662A':'#F5BE34';g.beginPath();g.ellipse(x,y,1.5,.7,t+i,0,7);g.fill()}
+}
+function tick(n){if(on){t=Math.min(LEN,t+Math.min(.1,(n-last)/1000));if(t>=LEN)on=false;frame();ui()}last=n;requestAnimationFrame(tick)}
+const tog=()=>{if(t>=LEN)t=0;on=!on;ui();frame()};$('p').onclick=c.onclick=tog;$('r').oninput=()=>{t=+$('r').value;frame();ui()};
+addEventListener('message',e=>{if(e.data&&e.data.kairos==='mode'){document.body.classList.toggle('mini',e.data.mode==='mini');requestAnimationFrame(frame)}});
+new ResizeObserver(frame).observe(c);ui();requestAnimationFrame(tick);
+</script></html>

@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>共此刻 KAIROS</title>
+<link rel="stylesheet" href="assets/style.css?v=11231710">
+</head>
+<body data-view="home">
+
+<header id="bar">
+  <button class="brand" id="toHome"><b>共此刻</b><span>KAIROS</span></button>
+  <span class="space">我们的共享空间</span>
+  <span class="grow"></span>
+  <span class="me" id="meChip"></span>
+  <button class="btn primary" id="toEdit">编辑空间</button>
+</header>
+
+<header id="editbar">
+  <b>编辑空间</b>
+  <span id="dirty" role="status"></span>
+  <span class="grow"></span>
+  <button class="btn" id="undo">撤销</button>
+  <button class="btn" id="resetRoom">恢复默认</button>
+  <button class="btn" id="quitEdit">退出</button>
+  <button class="btn primary" id="saveEdit">保存</button>
+</header>
+
+<aside id="lib" aria-label="家具库">
+  <h2>家具库</h2>
+  <input id="libQ" type="search" placeholder="搜索家具" aria-label="搜索家具">
+  <div id="libGrid"></div>
+</aside>
+
+<main id="stageWrap">
+  <div id="tags"></div>
+  <div id="me"><div id="meFace"></div><video id="meCam" autoplay muted playsinline hidden></video><span id="meName"></span></div>
+  <div id="ctl"><button class="btn" id="camBtn" aria-pressed="false">打开摄像头</button><button class="btn" id="faceBtn" aria-expanded="false">换头像</button><div id="facePop" hidden></div></div>
+  <div id="zoom">
+    <button class="btn" id="zo" aria-label="缩小">－</button><span id="zv"></span><button class="btn" id="zi" aria-label="放大">＋</button><button class="btn" id="zf">看全屋</button>
+  </div>
+  <div id="dock" aria-label="已打开的网页"></div>
+</main>
+
+<aside id="props" aria-label="属性">
+  <section id="pObj">
+    <div class="phead"><img id="pImg" alt=""><h2 id="pKind"></h2></div>
+    <label>名称<input id="pName" maxlength="16"></label>
+    <label>链接<input id="pUrl" placeholder="example.com" spellcheck="false" autocomplete="off"></label>
+    <p class="err" id="pErr" role="alert"></p>
+    <label>展示方式
+      <select id="pOpen"><option value="embed">在房间里打开</option><option value="tab">新标签页打开</option></select>
+    </label>
+    <p class="hint">有些网站不允许嵌入，会显示空白，这时改用新标签页。</p>
+    <div class="row"><button class="btn" id="pTest">预览链接</button><button class="btn" id="pUnlink">解除绑定</button></div>
+    <hr>
+    <div class="row"><button class="btn" id="pFlip">镜像</button><button class="btn" id="pCopy">复制</button><button class="btn" id="pDel">删除</button></div>
+  </section>
+  <section id="pRoom">
+    <h2>空间设置</h2>
+    <p class="hint">点一件家具可改它的名称和链接，拖动可换位置。</p>
+    <label>区域<select id="rRoom"></select></label>
+    <label>地板</label><div class="sw" id="rFloor"></div>
+    <label>墙面<select id="rWall"><option value="0">工作区墙</option><option value="1">影音区墙</option><option value="2">阅读区墙</option></select></label>
+    <label>墙纸</label><div class="sw" id="rPaper"></div>
+  </section>
+</aside>
+
+<div id="home">
+  <div class="card">
+    <p class="logo">共此刻 KAIROS</p>
+    <h1>和朋友一起，<br>进入互联网。</h1>
+    <p>一个可以布置的 2D 房间。网页不在标签页里，在电脑、电视和书桌上。</p>
+    <form id="enter">
+      <span class="lab">选个头像</span><div id="faces" class="faces" role="group" aria-label="头像"></div>
+      <label for="nick">昵称</label>
+      <input id="nick" maxlength="10" placeholder="不填就以访客进入" autocomplete="off">
+      <button class="btn primary big">进入共享空间</button>
+    </form>
+    <p class="note">演示版：房间改动只保存在这台电脑的浏览器里。</p>
+  </div>
+</div>
+
+<div id="wins"></div>
+<div id="toast" role="status"></div>
+<dialog id="ask"><p id="askT"></p><div class="row"><button class="btn" id="askNo">取消</button><button class="btn" id="askMid"></button><button class="btn primary" id="askYes"></button></div></dialog>
+
+<script src="assets/data.js?v=11231710"></script>
+<script src="assets/me.js?v=11231710"></script>
+<script src="assets/app.js?v=11231710"></script>
+</body>
+</html>

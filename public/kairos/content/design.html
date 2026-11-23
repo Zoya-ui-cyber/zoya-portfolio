@@ -1,0 +1,26 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>设计稿</title>
+<style>
+*{box-sizing:border-box}body{margin:0;height:100vh;display:flex;flex-direction:column;font:14px "Microsoft YaHei",sans-serif;color:#3A2415;background:#F7F1E4;overflow:hidden}
+nav{display:flex;gap:8px;align-items:center;padding:8px 12px;background:#fff;border-bottom:1px solid #E5CDA0;flex-wrap:wrap}
+nav b{margin-right:6px}button{font:inherit;color:inherit;border:1.5px solid #3A2415;border-radius:7px;background:#FFFDF6;padding:3px 10px;cursor:pointer}
+.c{width:24px;height:24px;padding:0;border-radius:50%}
+#b{flex:1;position:relative;background-image:radial-gradient(#DCCBA6 1px,transparent 1.2px);background-size:20px 20px;overflow:hidden}
+.n{position:absolute;white-space:pre-line;touch-action:none;cursor:grab;border-radius:6px;padding:12px;min-width:90px;border:1.5px solid #3A2415;user-select:none}
+.n.s{outline:3px solid #E8662A}.n:focus{cursor:text}
+</style>
+<nav><b>房间导航构思</b><button id="add">＋ 便签</button><span id="cs"></span><button id="del">删除</button><span style="color:#7A5A3E">拖动移动，双击改字</span></nav>
+<div id="b"></div>
+<script>
+const b=document.getElementById('b');let s=null;
+const pick=n=>{s&&s.classList.remove('s');s=n;n&&n.classList.add('s')};
+function note(t,x,y,c,w){const n=document.createElement('div');n.className='n';n.textContent=t;n.style.cssText=`left:${x}px;top:${y}px;background:${c};width:${w||130}px`;
+ let d;n.onpointerdown=e=>{pick(n);if(n.isContentEditable)return;d=[e.clientX-n.offsetLeft,e.clientY-n.offsetTop];n.setPointerCapture(e.pointerId)};
+ n.onpointermove=e=>{if(d){n.style.left=e.clientX-d[0]+'px';n.style.top=e.clientY-d[1]+'px'}};n.onpointerup=n.onpointercancel=()=>d=null;
+ n.ondblclick=()=>{n.contentEditable='plaintext-only';n.focus()};n.onblur=()=>n.contentEditable='false';b.append(n);return n}
+note('空间即界面\n不用菜单找内容，走到那个角落就好',30,30,'#FFF1D6',170);note('工作桌 → 设计稿',240,40,'#F5BE34');note('电视 → 视频',240,120,'#F3A27A');note('阅读桌 → 文章',240,200,'#B7C77F');
+note('待定：网页收起后，怎样让人知道它还开着？',40,180,'#fff',160);
+for(const c of['#FFF1D6','#F5BE34','#F3A27A','#B7C77F','#ffffff']){const e=document.createElement('button');e.className='c';e.style.background=c;e.setAttribute('aria-label','颜色');e.onclick=()=>s&&(s.style.background=c);document.getElementById('cs').append(e,' ')}
+let k=0;document.getElementById('add').onclick=()=>pick(note('新便签',90+k%5*24,110+k++%5*24,'#FFF1D6'));
+document.getElementById('del').onclick=()=>{s&&s.remove();s=null};
+b.onpointerdown=e=>{if(e.target===b)pick(null)};
+</script></html>
