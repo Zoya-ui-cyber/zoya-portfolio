@@ -35,7 +35,7 @@ function fast(type, data) {   // 能走直连就不占用服务器
   peers.forEach(p => { if (p.dc?.readyState === 'open') p.dc.send(s); else rest = true; });
   if (rest && Date.now() - (fast.t || 0) > 450) { fast.t = Date.now(); send(type, data); }
 }
-const myState = () => ({ name: api.name(), face: ME.faceIdx(), cam: !!ME.camTrack(), mic: !!mic, using: api.using(), media: show ? { name: show.name } : null, ...ME.pos() });
+const myState = () => ({ name: api.name(), face: ME.faceIdx(), cam: !!ME.camTrack(), mic: !!mic, using: api.using(), media: show ? { name: show.name, kind: show.kind, u: show.u } : null, ...ME.pos() });
 function state(to) { if (ch && admitted) send('state', { s: myState() }, to); }
 let st = 0; function stateSoon() { clearTimeout(st); st = setTimeout(() => state(), 120); }
 
@@ -52,10 +52,10 @@ function gotPos(p, m) { const x = +m.x, y = +m.y; if (isFinite(x) && isFinite(y)
 function gotState(p, s) {
   const was = p.media?.name;
   p.name = clean(s.name, 10) || '访客'; p.face = s.face | 0; p.cam = !!s.cam; p.mic = !!s.mic;
-  p.using = s.using && typeof s.using.u === 'string' ? { u: s.using.u.slice(0, 40), with: typeof s.using.with === 'string' ? s.using.with.slice(0, 40) : null, all: Array.isArray(s.using.all) ? s.using.all.slice(0, 20).map(String) : [] } : null;
-  p.media = s.media ? { name: clean(s.media.name, 60) } : null;
+  p.using = s.using && typeof s.using.u === 'string' ? { u: s.using.u.slice(0, 40), with: typeof s.using.with === 'string' ? s.using.with.slice(0, 40) : null, m: !!s.using.m, all: Array.isArray(s.using.all) ? s.using.all.slice(0, 20).map(String) : [] } : null;
+  p.media = s.media ? { name: clean(s.media.name, 60), kind: s.media.kind === 'screen' ? 'screen' : 'video', u: clean(s.media.u, 24) } : null;
   gotPos(p, s); paint(p); api.peersChanged();
-  if (was && !p.media) api.mediaEnded(p.id); api.partnerMoved(p.id, p.name, p.using?.all || []);
+  if (was && !p.media) api.mediaEnded(p.id); else if (p.media) api.mediaLive(p); api.partnerMoved(p.id, p.name, p.using?.all || []);
 }
 
 /* ---------- 房间内容（只认房主签名） ---------- */
@@ -77,7 +77,7 @@ async function gotRoom(m) {
 
 /* ---------- 进出房间 ---------- */
 let libP = null;
-const lib = () => libP ||= new Promise((ok, no) => { const s = mk('script'); s.src = 'assets/supabase.js?v=11231802'; s.onload = ok; s.onerror = () => { libP = null; no(); }; document.head.append(s); });
+const lib = () => libP ||= new Promise((ok, no) => { const s = mk('script'); s.src = 'assets/supabase.js?v=11232202'; s.onload = ok; s.onerror = () => { libP = null; no(); }; document.head.append(s); });
 async function join(id) {
   const my = ++token; rid = id; rev = 0; tries = 0; status('正在连接…');
   try { await lib(); } catch { status('联机组件没加载出来，刷新重试'); return; }
@@ -137,7 +137,7 @@ function paint(p) {
   const it = p.using && api.itemName(p.using.u);
   p.n.textContent = p.name + (p.mic ? '' : ' · 静音') + (p.on ? '' : ` · ${p.link}`);
   const same = p.using?.with === me; let t = '';
-  if (p.media) t = '看放映'; else if (it && !same) t = '一起看 ' + it;
+  if (p.media) t = p.media.kind === 'screen' ? '看屏幕' : '看放映'; else if (it && !same) t = '一起看 ' + it;
   p.b.textContent = t; p.b.hidden = !t || api.alreadyWith(p.id, p); p.offer = p.b.hidden ? '' : `${p.name}：${t}`; api.dock();
   place();
 }
@@ -159,7 +159,7 @@ function rtc(p) {
     const i = pc.getTransceivers().indexOf(e.transceiver);
     if (i === 0) { p.a.srcObject = new MediaStream([e.track]); p.a.play().catch(() => {}); }
     else if (i === 1) { p.stream.addTrack(e.track); p.v.srcObject = p.stream; p.v.play().catch(() => {}); }
-    else p.show.addTrack(e.track);
+    else { p.show.addTrack(e.track); if (p.media) api.mediaLive(p); }
   };
   pc.onconnectionstatechange = () => {
     if (pc !== p.pc) return; const s = pc.connectionState; p.on = s === 'connected';
@@ -192,7 +192,8 @@ async function kind(p) {
 function feed(p) {
   const t = p.pc.getTransceivers(); if (t.length < 4) return;
   const put = (i, track, rate) => { const s = t[i].sender; s.replaceTrack(track || null).catch(() => {}); if (rate) try { const q = s.getParameters(); if (q.encodings?.length) { q.encodings[0].maxBitrate = rate; s.setParameters(q).catch(() => {}); } } catch {} };
-  put(0, mic); put(1, ME.camTrack(), 350e3); put(2, show?.a); put(3, show?.v, 1.6e6);
+  put(0, mic); put(1, ME.camTrack(), 350e3); put(2, show?.a); put(3, show?.v);
+  try { const s = t[3].sender, q = s.getParameters(), scr = show?.kind === 'screen'; if (q.encodings?.length) { q.degradationPreference = scr ? 'maintain-resolution' : 'balanced'; q.encodings[0].maxBitrate = scr ? 2.5e6 : 1.6e6; if (scr) q.encodings[0].maxFramerate = 15; else delete q.encodings[0].maxFramerate; s.setParameters(q).catch(() => {}); } } catch {}
 }
 const feedAll = () => peers.forEach(feed);
 
@@ -208,9 +209,9 @@ function micUI() { const b = $('micBtn'); b.textContent = mic ? '关闭麦克风
 
 /* ---------- 放映自己的视频（不上传，直接推给朋友） ---------- */
 let show = null;
-function startShow(video, name) {
-  const s = video.captureStream ? video.captureStream() : video.mozCaptureStream?.(); if (!s) { if (rid) api.toast('这个浏览器不能把视频放给朋友，请用 Chrome 或 Edge'); return; }
-  show = { name, s }; const grab = () => { if (!show || show.s !== s) return; show.v = s.getVideoTracks()[0]; show.a = s.getAudioTracks()[0]; feedAll(); };
+function startShow(video, name, u, screen) {
+  const s = screen || (video.captureStream ? video.captureStream() : video.mozCaptureStream?.()); if (!s) { if (rid) api.toast('这个浏览器不能把视频放给朋友，请用 Chrome 或 Edge'); return; }
+  show = { name, s, u, kind: screen ? 'screen' : 'video' }; const grab = () => { if (!show || show.s !== s) return; show.v = s.getVideoTracks()[0]; show.a = s.getAudioTracks()[0]; feedAll(); };
   s.addEventListener('addtrack', grab); s.addEventListener('removetrack', grab); grab(); stateSoon();
 }
 function stopShow() { if (!show) return; show = null; feedAll(); stateSoon(); }

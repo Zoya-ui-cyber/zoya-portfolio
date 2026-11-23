@@ -56,6 +56,9 @@ button,input,select{font:inherit;color:inherit}
 .win.mini:hover .mc,.win.mini:focus-within .mc{opacity:1}
 .win.mini .mc .btn{padding:1px 8px;font-size:13px}
 .win.gone{display:none}
+.win:fullscreen{border:0;border-radius:0;resize:none}.win:fullscreen header{cursor:default}
+.win.media:fullscreen{background:#000}.win.media:fullscreen header{position:absolute;z-index:2;left:0;right:0;top:0;transition:transform .2s}
+.win.media.idle:fullscreen{cursor:none}.win.media.idle:fullscreen header:not(:has(:focus-visible)){transform:translateY(-100%)}
 .dragging iframe{pointer-events:none}
 #lib,#props{position:fixed;z-index:25;top:var(--bar);bottom:0;background:var(--white);padding:14px;overflow:auto;display:none}
 #lib{left:0;width:218px;border-right:2px solid var(--ink)}#props{right:0;width:272px;border-left:2px solid var(--ink)}
@@ -115,3 +118,13 @@ dialog{border:2px solid var(--ink);border-radius:12px;background:var(--white);co
 #inv{width:min(460px,92vw)}#inv h2{margin:0 0 8px;font-size:24px}#inv p{margin:8px 0}#inv .row{margin-top:14px}
 #ctl{max-width:calc(100vw - 24px)}
 #dock .offer{background:var(--yellow)}
+
+.win.media.mini{border:0;border-radius:2px;z-index:5}.win.media.mini .body{background:#2B1B10}
+.win.mini.media .mc{background:transparent}.win.mini.media:hover .mc{background:#3a241577}.win.mini.media .mc .btn{display:none}
+.tag.live{background:var(--green);color:#fff}.tag.live::after{background:var(--green)}
+#showBtn[aria-pressed=true]{background:var(--orange);color:#fff}
+#menu{position:absolute;z-index:6;min-width:200px;background:var(--white);border:2px solid var(--ink);border-radius:12px;padding:8px;display:grid;gap:4px}
+#menu>b{padding:2px 8px 4px}
+#menu button{text-align:left;background:none;border:0;border-radius:8px;padding:6px 10px;cursor:pointer}
+#menu button:hover,#menu button:focus-visible{background:#FBE6BF}#menu button:disabled{opacity:.55;cursor:default}
+#menu small{display:block;color:var(--soft);font-size:13px;max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
