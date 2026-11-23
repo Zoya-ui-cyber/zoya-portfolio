@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>共此刻 KAIROS</title>
-<link rel="stylesheet" href="assets/style.css?v=11231710">
+<link rel="stylesheet" href="assets/style.css?v=11231802">
 </head>
 <body data-view="home">
 
@@ -13,6 +13,7 @@
   <span class="space">我们的共享空间</span>
   <span class="grow"></span>
   <span class="me" id="meChip"></span>
+  <button class="btn" id="inviteBtn">邀请朋友</button>
   <button class="btn primary" id="toEdit">编辑空间</button>
 </header>
 
@@ -34,8 +35,9 @@
 
 <main id="stageWrap">
   <div id="tags"></div>
+  <div id="peers"></div>
   <div id="me"><div id="meFace"></div><video id="meCam" autoplay muted playsinline hidden></video><span id="meName"></span></div>
-  <div id="ctl"><button class="btn" id="camBtn" aria-pressed="false">打开摄像头</button><button class="btn" id="faceBtn" aria-expanded="false">换头像</button><div id="facePop" hidden></div></div>
+  <div id="ctl"><button class="btn" id="camBtn" aria-pressed="false">打开摄像头</button><button class="btn" id="micBtn" aria-pressed="false" hidden>打开麦克风</button><button class="btn" id="showBtn">放视频</button><input id="showFile" type="file" accept="video/*" hidden><button class="btn" id="faceBtn" aria-expanded="false">换头像</button><div id="facePop" hidden></div></div>
   <div id="zoom">
     <button class="btn" id="zo" aria-label="缩小">－</button><span id="zv"></span><button class="btn" id="zi" aria-label="放大">＋</button><button class="btn" id="zf">看全屋</button>
   </div>
@@ -77,16 +79,19 @@
       <input id="nick" maxlength="10" placeholder="不填就以访客进入" autocomplete="off">
       <button class="btn primary big">进入共享空间</button>
     </form>
-    <p class="note">演示版：房间改动只保存在这台电脑的浏览器里。</p>
+    <p class="note" id="homeNote">演示版：房间改动只保存在这台电脑的浏览器里。</p>
   </div>
 </div>
 
 <div id="wins"></div>
+<dialog id="inv"><h2>邀请朋友</h2><p>把链接发给朋友，打开就能进这个房间。只有你能布置，朋友可以使用。</p><input id="invLink" readonly aria-label="邀请链接"><p class="hint" id="invN"></p><p class="hint">你离线时，朋友看不到最新的布置。</p><div class="row"><button class="btn primary" id="invCopy">复制链接</button><button class="btn" id="invClose">关闭</button></div></dialog>
 <div id="toast" role="status"></div>
 <dialog id="ask"><p id="askT"></p><div class="row"><button class="btn" id="askNo">取消</button><button class="btn" id="askMid"></button><button class="btn primary" id="askYes"></button></div></dialog>
 
-<script src="assets/data.js?v=11231710"></script>
-<script src="assets/me.js?v=11231710"></script>
-<script src="assets/app.js?v=11231710"></script>
+<script src="assets/data.js?v=11231802"></script>
+<script src="assets/me.js?v=11231802"></script>
+<script src="assets/net-config.js?v=11231802"></script>
+<script src="assets/net.js?v=11231802"></script>
+<script src="assets/app.js?v=11231802"></script>
 </body>
 </html>

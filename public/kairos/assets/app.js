@@ -135,12 +135,12 @@ function hot(u, on) {
 function place() {
   const b = wrap.getBoundingClientRect();
   $('tags').querySelectorAll('.tag').forEach(t => {
-    const o = byId(t.dataset.u); if (!o) return; const r = rectOf(o), w = wins.get(o.uid);
+    const o = byId(t.dataset.u); if (!o) return; const r = rectOf(o);
     t.style.left = r.x - b.left + r.w / 2 + 'px'; t.style.top = r.y - b.top - 7 + 'px';
-    t.hidden = !!w && w.mode === 'mini' && view === 'room';
+    t.hidden = view === 'room' && [...wins.values()].some(w => w.u === o.uid && w.mode === 'mini');
   });
   wins.forEach(w => w.mode === 'mini' && fitMini(w));
-  window.ME?.place();
+  window.ME?.place(); window.NET?.place();
 }
 
 /* ---------- 网页窗口：展开 / 家具模式 / 隐藏 ---------- */
@@ -172,38 +172,76 @@ function openItem(u) {
   const o = byId(u); if (!o || !o.url) return;
   if (o.open === 'tab') { window.open(o.url, '_blank', 'noopener'); return; }
   const w = wins.get(u); if (w) { setMode(w, 'full'); return; }
-  const el = mk('section', 'win full'), hd = mk('header'), body = mk('div', 'body'), fr = mk('iframe');
-  el.setAttribute('aria-label', title(o));
-  const B = (t, f) => { const b = mk('button', 'btn', t); b.onclick = e => { e.stopPropagation(); f(); }; return b; };
-  const n = { u, url: o.url, el, fr, mode: 'full', wide: /^https:\/\/www\.bilibili\.com\/(?!video)/.test(o.url) ? 1100 : 0 };
-  new ResizeObserver(() => fitWide(n)).observe(body);
-  hd.append(mk('b', '', title(o)), mk('span', 'u', showUrl(o.url)), B('家具模式', () => setMode(n, 'mini')), B('隐藏', () => setMode(n, 'hidden')), B('关闭', () => closeWin(n)));
+  const fr = mk('iframe'), em = embedOf(o.url);
   if (!isLocal(o.url)) fr.sandbox = 'allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox';
-  const em = embedOf(o.url);
   if (em) { fr.allow = 'autoplay; encrypted-media; fullscreen; clipboard-write'; fr.sandbox.add('allow-presentation'); fr.referrerPolicy = 'strict-origin-when-cross-origin'; } else fr.referrerPolicy = 'no-referrer';
-  fr.title = title(o); fr.src = em ? em.src : o.url; body.append(fr);
+  fr.title = title(o); fr.src = em ? em.src : o.url;
+  let tip = null;
+  if (!isLocal(o.url)) { const a = mk('a', '', '在新标签页打开'); a.href = o.url; a.target = '_blank'; a.rel = 'noopener'; tip = mk('div', 'tip'); tip.append(em ? `${em.by} 官方播放器` : '页面空白？这个网站可能不允许嵌入。', a); }
+  makeWin({ key: u, u, url: o.url, fr, name: title(o), sub: showUrl(o.url), tip, by: em?.by, wide: /^https:\/\/www\.bilibili\.com\/(?!video)/.test(o.url) ? 1100 : 0 });
+}
+function makeWin(n) {
+  const el = n.el = mk('section', 'win full'), hd = mk('header'), body = mk('div', 'body'); n.mode = 'full';
+  el.setAttribute('aria-label', n.name);
+  const B = (t, f) => { const b = mk('button', 'btn', t); b.onclick = e => { e.stopPropagation(); f(); }; return b; };
+  new ResizeObserver(() => fitWide(n)).observe(body);
+  n.badge = mk('span', 'badge'); n.badge.hidden = true;
+  hd.append(mk('b', '', n.name), n.badge, mk('span', 'u', n.sub), ...(byId(n.u) ? [B('家具模式', () => setMode(n, 'mini'))] : []), B('隐藏', () => setMode(n, 'hidden')), B('关闭', () => closeWin(n)));
   const mc = mk('div', 'mc'); mc.append(B('放大', () => setMode(n, 'full')), B('隐藏', () => setMode(n, 'hidden')));
-  mc.onclick = () => setMode(n, 'full'); body.append(mc); el.append(hd, body);
-  if (!isLocal(o.url)) {
-    const tip = mk('div', 'tip'), a = mk('a', '', '在新标签页打开'); a.href = o.url; a.target = '_blank'; a.rel = 'noopener';
-    tip.append(em ? `${em.by} 官方播放器` : '页面空白？这个网站可能不允许嵌入。', a); el.append(tip);
-  }
-  n.box = spot(u, em?.by, n.wide);
+  mc.onclick = () => setMode(n, 'full'); body.append(n.fr, mc); el.append(hd, body); if (n.tip) el.append(n.tip);
+  n.box = spot(n.u, n.by, n.wide);
   const b = wrap.getBoundingClientRect();
   el.addEventListener('pointerdown', () => focusWin(n));
   let d = null;
   hd.onpointerdown = e => { if (e.target.closest('button')) return; d = { x: e.clientX - el.offsetLeft, y: e.clientY - el.offsetTop }; hd.setPointerCapture(e.pointerId); document.body.classList.add('dragging'); };
   hd.onpointermove = e => { if (!d) return; n.box.x = Math.min(innerWidth - 140, Math.max(140 - el.offsetWidth, e.clientX - d.x)); n.box.y = Math.min(innerHeight - 50, Math.max(b.top, e.clientY - d.y)); el.style.left = n.box.x + 'px'; el.style.top = n.box.y + 'px'; };
   hd.onpointerup = hd.onpointercancel = () => { d = null; document.body.classList.remove('dragging'); };
-  $('wins').append(el); wins.set(u, n); setMode(n, 'full');
+  $('wins').append(el); wins.set(n.key, n); setMode(n, 'full'); return n;
 }
+
+/* ---------- 一起看 ---------- */
+function joinUse(u, id, name) {
+  const o = byId(u); if (!o?.url) return;
+  openItem(u); if (o.open === 'tab') return toast(`已在新标签页打开${title(o)}`);
+  const n = wins.get(u); if (n) { n.with = id; badges(); NET.stateSoon(); NET.repaint(); toast(`正在和${name}一起看`); }
+}
+function badges() {
+  wins.forEach(n => {
+    const p = n.with && NET.peers.get(n.with), fans = [...NET.peers.values()].filter(q => q.using?.with === NET.meId() && (n.media ? n.key === 'media' && !n.from && q.using.u === n.u : q.using.u === n.u)).map(q => q.name);
+    n.badge.replaceChildren(); n.badge.hidden = !p && !fans.length;
+    if (p) { const x = mk('button', 'btn', '退出一起看'); x.onclick = e => { e.stopPropagation(); if (n.media) closeWin(n); else { n.with = null; badges(); NET.stateSoon(); NET.repaint(); toast('已退出，继续自己看'); } }; n.badge.append(`和${p.name}一起看 `, x); }
+    else if (fans.length) n.badge.append(`${fans.join('、')}和你一起看`);
+  });
+}
+const active = () => [...wins.values()].filter(n => n.mode !== 'hidden' && !(n.media && !n.from)).sort((a, b) => (b.z || 0) - (a.z || 0));
+function using() { const l = active(), n = l[0]; return n ? { u: n.u, with: n.with || null, all: l.map(x => x.u) } : null; }
+function endWith(id, name, all) { wins.forEach(n => { if (n.with === id && !n.media && !all.includes(n.u)) { n.with = null; toast(`${name}离开了，你可以继续自己看`); } }); badges(); }
+
+/* ---------- 放映自己的视频 ---------- */
+const tvUid = () => room.items.find(o => o.id === 'tv')?.uid;
+function startLocal(file) {
+  if ([...NET.peers.values()].some(p => p.media)) return toast('已经有人在放映了');
+  const old = wins.get('media'); if (old) closeWin(old);
+  const v = mk('video'); v.controls = v.playsInline = true; v.src = URL.createObjectURL(file);
+  const n = makeWin({ key: 'media', media: true, u: tvUid(), url: '', fr: v, name: '放映', sub: file.name }); n.src = v.src;
+  v.onerror = () => { if (wins.get('media') === n) { closeWin(n); toast('这个视频格式浏览器放不了，建议用 mp4'); } };
+  v.onloadeddata = () => { v.onloadeddata = null; NET.startShow(v, file.name); }; v.play().catch(() => {});
+}
+function watchMedia(p) {
+  const w = wins.get('media'); if (w) { if (w.from === p.id) return setMode(w, 'full'); closeWin(w); }
+  const v = mk('video'); v.autoplay = v.playsInline = true; v.srcObject = p.show;
+  const n = makeWin({ key: 'media', media: true, from: p.id, with: p.id, u: tvUid(), url: '', fr: v, name: '放映', sub: p.media?.name || '' });
+  const go = () => v.play().catch(() => {}); p.show.onaddtrack = () => { v.srcObject = p.show; go(); }; go(); badges(); NET.stateSoon(); NET.repaint(); return n;
+}
+$('showBtn').onclick = () => $('showFile').click();
+$('showFile').onchange = () => { const f = $('showFile').files[0]; $('showFile').value = ''; if (f) startLocal(f); };
 /* 找一个最少遮挡可点家具、标签和已开窗口的位置 */
 function spot(u, by, wide) {
   const b = wrap.getBoundingClientRect(), W = by === 'Spotify' ? 420 : Math.min(wide ? 720 : 560, b.width * (wide ? .5 : .42)), H = by === 'Spotify' ? Math.min(434, b.height - 80) : Math.min(W * .74, b.height - 80);
   const keep = room.items.filter(o => o.url).map(o => { const r = rectOf(o); return { x: r.x - 8, y: r.y - 46, w: r.w + 16, h: r.h + 54, k: o.uid === u ? 6 : 4 }; });
   wins.forEach(w => w.mode === 'full' && keep.push({ x: w.el.offsetLeft, y: w.el.offsetTop, w: w.el.offsetWidth, h: w.el.offsetHeight, k: .8 }));
   keep.push({ x: b.right - 270, y: b.bottom - 66, w: 270, h: 66, k: 3 }, { x: b.left, y: b.bottom - 62, w: 420, h: 62, k: 2 });
-  const o = byId(u), r = rectOf(o), cx = r.x + r.w / 2, cy = r.y + r.h / 2; let best = null;
+  const o = byId(u), r = o ? rectOf(o) : b, cx = r.x + (r.w ?? r.width) / 2, cy = r.y + (r.h ?? r.height) / 2; let best = null;
   for (let i = 0; i <= 16; i++) for (let k = 0; k <= 10; k++) {
     const x = b.left + 16 + (b.width - W - 32) * i / 16, y = b.top + 14 + (b.height - H - 28) * k / 10;
     const hit = keep.reduce((t, q) => t + q.k * Math.max(0, Math.min(x + W, q.x + q.w) - Math.max(x, q.x)) * Math.max(0, Math.min(y + H, q.y + q.h) - Math.max(y, q.y)), 0);
@@ -222,8 +260,8 @@ function setMode(n, m) {
     Object.assign(n.el.style, { left: q.x + 'px', top: q.y + 'px', width: q.w + 'px', height: q.h + 'px' });
     n.fr.style.cssText = ''; fitWide(n); focusWin(n);
   } else if (cur === n) cur = null;
-  if (isLocal(n.url)) try { n.fr.contentWindow.postMessage({ kairos: 'mode', mode: m }, '*'); } catch {}
-  dock(); place();
+  if (!n.media && isLocal(n.url)) try { n.fr.contentWindow.postMessage({ kairos: 'mode', mode: m }, '*'); } catch {}
+  dock(); place(); NET.stateSoon();
 }
 /* 只有桌面版的网站：按桌面宽度排版再整体缩小，避免横向滚动 */
 function fitWide(n) {
@@ -236,15 +274,18 @@ function fitMini(n) {
   else { const q = rectOf(o), w = Math.max(110, Math.min(260, q.w * 1.1)), h = w * .6; r = { x: q.x + q.w / 2 - w / 2, y: Math.max(wrap.getBoundingClientRect().top + 4, q.y - h - 4), w, h }; }
   const bw = n.wide || 640, bh = bw * r.h / r.w;
   Object.assign(n.el.style, { left: r.x + 'px', top: r.y + 'px', width: r.w + 'px', height: r.h + 'px' });
-  n.fr.style.cssText = `width:${bw}px;height:${bh}px;transform:scale(${r.w / bw})`;
+  n.fr.style.cssText = n.media ? '' : `width:${bw}px;height:${bh}px;transform:scale(${r.w / bw})`;
 }
-function focusWin(n) { n.el.style.zIndex = ++ztop; cur = n; dock(); }
-function closeWin(n) { n.el.remove(); wins.delete(n.u); if (cur === n) cur = null; dock(); place(); }
+function focusWin(n) { n.el.style.zIndex = n.z = ++ztop; if (cur !== n) { cur = n; NET.stateSoon(); } dock(); }
+function closeWin(n) {
+  if (n.media && !n.from) { NET.stopShow(); n.fr.onerror = null; n.fr.pause(); n.fr.removeAttribute('src'); n.fr.load(); URL.revokeObjectURL(n.src); }
+  if (n.from) n.fr.srcObject = null;
+  n.el.remove(); wins.delete(n.key); NET.stateSoon(); setTimeout(NET.repaint); if (cur === n) cur = null; dock(); place(); }
 function dock() {
   $('dock').replaceChildren(...[...wins.values()].map(n => {
-    const o = byId(n.u), b = mk('button', 'btn' + (cur === n ? ' cur' : ''), (o ? title(o) : '') + ({ full: '', mini: ' · 家具模式', hidden: ' · 已隐藏' })[n.mode]);
+    const o = byId(n.u), b = mk('button', 'btn' + (cur === n ? ' cur' : ''), (n.media ? '放映' : o ? title(o) : '') + ({ full: '', mini: ' · 家具模式', hidden: ' · 已隐藏' })[n.mode]);
     b.dataset.s = n.mode; b.onclick = () => setMode(n, 'full'); return b;
-  }));
+  }), ...[...NET.peers.values()].filter(p => p.offer).map(p => { const b = mk('button', 'btn offer', p.offer); b.onclick = () => p.b.click(); return b; }));
 }
 
 /* ---------- 指针：拖视角 / 点家具 / 编辑拖家具 ---------- */
@@ -332,7 +373,7 @@ function save() {
   document.activeElement?.blur?.();
   if (badUrl) { toast('链接有误，还没保存'); $('pUrl').focus(); return false; }
   if (!store(KEY, JSON.stringify(room))) { toast('保存失败：浏览器不允许本地存储'); return false; }
-  saved = copy(room); hist = []; state(); toast('已保存'); return true;
+  saved = copy(room); hist = []; state(); toast('已保存'); NET.pushRoom(); return true;
 }
 $('saveEdit').onclick = save;
 async function quit() {
@@ -359,19 +400,19 @@ let tt; function toast(s) { $('toast').textContent = s; $('toast').classList.add
 /* ---------- 页面切换 ---------- */
 function go(v) {
   view = v; document.body.dataset.view = v; sel = null; hoverU(null);
-  if (v === 'home') { V.z = 1; [...wins.values()].forEach(closeWin); }
+  if (v === 'home') { V.z = 1; [...wins.values()].forEach(closeWin); if (NET.inRoom()) NET.leave(); $('homeNote').textContent = NET.urlRoom() ? '你打开的是共享房间的链接，进入后会看到正在房间里的人。' : '演示版：房间改动只保存在这台电脑的浏览器里。'; }
   if (v === 'edit') { hist = []; lib(); panel(); state(); }
   if (v === 'room') {   // 绑定改过或删掉的，关掉旧窗口
-    [...wins.values()].forEach(n => { const o = byId(n.u); if (!o || o.url !== n.url || o.open === 'tab') closeWin(n); else { n.el.querySelector('header b').textContent = title(o); n.el.setAttribute('aria-label', title(o)); } });
+    [...wins.values()].forEach(n => { if (n.media) return; const o = byId(n.u); if (!o || o.url !== n.url || o.open === 'tab') closeWin(n); else { n.el.querySelector('header b').textContent = title(o); n.el.setAttribute('aria-label', title(o)); } });
     dock();
   }
   ME.view(v); draw(); requestAnimationFrame(look);
 }
 $('nick').value = load(NICK) || '';
-$('enter').onsubmit = e => { e.preventDefault(); const n = $('nick').value.trim(); store(NICK, n); ME.setName(n || '访客'); $('meChip').textContent = (n || '访客') + ' · 在线'; go('room'); };
+$('enter').onsubmit = e => { e.preventDefault(); const n = $('nick').value.trim(); store(NICK, n); ME.setName(n || '访客'); nick = n || '访客'; go('room'); NET.status(); const r = NET.urlRoom(); if (r) { ME.scatter(); NET.join(r); } };
 $('toHome').onclick = () => go('home');
 addEventListener('keydown', e => {
-  if ($('ask').open || /INPUT|SELECT/.test(e.target.tagName)) return;
+  if ($('ask').open || $('inv').open || /INPUT|SELECT/.test(e.target.tagName)) return;
   if (e.key === 'Escape') { if (view === 'room' && cur) closeWin(cur); else if (view === 'edit') select(null); }
   if (view === 'edit') {
     if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); $('undo').click(); }
@@ -382,6 +423,33 @@ addEventListener('keydown', e => {
   }
 });
 addEventListener('beforeunload', e => { if (view === 'edit' && dirty()) e.preventDefault(); });
+/* ---------- 联机时的房间数据 ---------- */
+let nick = '访客', own = null;
+const PAT = new Set(Object.keys(FLOORS)), num = (v, a, b) => Math.min(b, Math.max(a, +v || 0));
+function safeRoom(d) {
+  const pick = (o, ok) => Object.fromEntries(Object.entries(o || {}).filter(([k, v]) => ok(k) && PAT.has(v)));
+  const ids = new Set();
+  const items = (Array.isArray(d?.items) ? d.items : []).slice(0, 200).filter(o => o && DEF[o.id] && /^[\w]{1,24}$/.test(o.uid) && !ids.has(o.uid) && ids.add(o.uid)).map(o => {
+    const n = { uid: o.uid, id: o.id, x: num(o.x, -1, 15), y: num(o.y, -2, 9), f: o.f === -1 ? -1 : 1 };
+    if (typeof o.name === 'string' && o.name) n.name = o.name.slice(0, 16);
+    if (typeof o.url === 'string') { const u = normUrl(o.url.slice(0, 2000)); if (u.url) { n.url = u.url; n.open = o.open === 'tab' ? 'tab' : 'embed'; } }
+    return n;
+  });
+  return { items, floors: pick(d?.floors, k => k in K.rooms), walls: pick(d?.walls, k => /^[012]$/.test(k)), v: 2, r: 1 };
+}
+function swapRoom(r) { room = r; saved = copy(room); hist = []; if (view !== 'home') go('room'); else draw(); NET.repaint(); }
+NET.init({
+  name: () => nick, dock, using, toast, joinUse, watchMedia, peersChanged: () => { badges(); NET.status(); },
+  screen: (x, y) => screenAt(x, y), itemName: u => { const o = byId(u); return o?.url ? title(o) : ''; },
+  alreadyWith: (id, p) => [...wins.values()].some(n => n.with === id && (p.media ? n.media : n.u === p.using?.u)),
+  roomData: () => ({ items: saved.items, floors: saved.floors, walls: saved.walls }),
+  applyRoom: d => swapRoom(safeRoom(d)),
+  roleChanged: mine => { $('toEdit').hidden = !mine; if (!mine && !own) { own = copy(room); swapRoom({ ...fresh(), v: 2, r: 1 }); } else if (mine && own) { const o = own; own = null; swapRoom(o); } },
+  mediaEnded: id => { const w = wins.get('media'); if (w?.from === id) { closeWin(w); toast('放映结束了'); } },
+  partnerMoved: endWith,
+  full: () => { go('home'); $('homeNote').textContent = '这个房间已经满 4 人了，稍后再试。'; toast('房间已满'); },
+});
+const screenAt = (x, y) => { const m = svg.getScreenCTM(), b = wrap.getBoundingClientRect(), q = new DOMPoint((x + MX) * S, (y + MY) * S).matrixTransform(m); return { x: q.x - b.left, y: q.y - b.top, m: m.a * S }; };
 window.ME.init({
   walk: K.walk, view: () => view,
   screen: (x, y) => { const m = svg.getScreenCTM(), b = wrap.getBoundingClientRect(), q = new DOMPoint((x + MX) * S, (y + MY) * S).matrixTransform(m); return { x: q.x - b.left, y: q.y - b.top, m: m.a * S }; },

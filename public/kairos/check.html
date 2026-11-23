@@ -1,0 +1,17 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>共此刻 连接检测</title>
+<style>body{margin:0;background:#FFF8E8;color:#3A2415;font:16px/1.7 "Microsoft YaHei",sans-serif}main{max-width:560px;margin:auto;padding:40px 22px}h1{font-family:KaiTi,serif;margin:0 0 6px}li{margin:8px 0}pre{background:#FFFDF6;border:2px solid #3A2415;border-radius:10px;padding:14px;white-space:pre-wrap;font:14px/1.7 Consolas,"Microsoft YaHei",monospace}button{font:inherit;border:2px solid #3A2415;border-radius:9px;background:#C94F1B;color:#fff;padding:7px 18px;cursor:pointer}</style></head><body><main>
+<h1>共此刻 连接检测</h1><p>大约 15 秒，检测完点复制，把结果发给房主。不会打开摄像头，也不会记录你的 IP。</p><pre id="o">检测中…</pre><button id="c" hidden>复制结果</button>
+</main><script src="assets/net-config.js"></script><script>
+(async()=>{const out=[],o=document.getElementById('o'),add=s=>{out.push(s);o.textContent=out.join('\n')};
+const lim=(p,ms)=>Promise.race([p,new Promise(r=>setTimeout(()=>r(null),ms))]);
+add('浏览器  '+((navigator.userAgent.match(/(Edg|Chrome|Firefox|Version)\/[\d]+/g)||['未知']).pop()));
+let t=performance.now();const site=await lim(fetch('assets/data.js?'+Date.now(),{cache:'no-store'}).then(r=>r.text()).then(x=>[x.length/1024|0,performance.now()-t|0]).catch(()=>null),12000);
+add('网站    '+(site?`正常，${site[0]}KB 用时 ${site[1]}ms`:'打不开或太慢'));
+const ws=await lim(new Promise(r=>{try{const s=performance.now(),w=new WebSocket(KAIROS_NET.url.replace(/^http/,'ws')+'/realtime/v1/websocket?apikey='+encodeURIComponent(KAIROS_NET.key)+'&vsn=1.0.0');let a=0;w.onopen=()=>{a=performance.now();w.send(JSON.stringify({topic:'phoenix',event:'heartbeat',payload:{},ref:'1'}))};w.onmessage=()=>{r([a-s|0,performance.now()-a|0]);w.close()};w.onerror=()=>r(null)}catch(e){r(null)}}),12000);
+add('房间服务 '+(ws?`正常，建立 ${ws[0]}ms，往返 ${ws[1]}ms`:'连不上'));
+let okN=0;for(const [n,u] of [['Cloudflare','stun:stun.cloudflare.com:3478'],['小米','stun:stun.miwifi.com:3478'],['Google','stun:stun.l.google.com:19302']]){
+const r=await lim(new Promise(async r=>{const s=performance.now(),p=new RTCPeerConnection({iceServers:[{urls:u}]});p.createDataChannel('x');p.onicecandidate=e=>{if(e.candidate&&e.candidate.type==='srflx'){r(performance.now()-s|0);p.close()}};await p.setLocalDescription(await p.createOffer())}),5000);
+if(r!=null)okN++;add(`穿透 ${n.padEnd(10)} `+(r!=null?`正常 ${r}ms`:'不通'))}
+add('');add(!site||!ws?'结论：房间进不去，需要换网络。':okN?'结论：可以进房间，视频大概率能直连，最终以实际通话为准。':'结论：可以进房间，但视频可能连不通，需要中转。');
+const b=document.getElementById('c');b.hidden=false;b.onclick=async()=>{try{await navigator.clipboard.writeText(out.join('\n'));b.textContent='已复制'}catch(e){const s=getSelection();s.selectAllChildren(o);b.textContent='请手动复制'}}})()
+</script></body></html>

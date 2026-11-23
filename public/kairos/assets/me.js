@@ -27,7 +27,7 @@ let idx = +(get() ?? 0); if (!LIST[idx]) idx = 0;
 function buttons(box) {
   box.replaceChildren(...LIST.map((_, i) => {
     const b = document.createElement('button'); b.type = 'button'; b.innerHTML = face(i); b.setAttribute('aria-label', '头像 ' + (i + 1));
-    b.onclick = () => { idx = i; put(i); paint(); $('facePop').hidden = true; $('faceBtn').setAttribute('aria-expanded', 'false'); }; return b;
+    b.onclick = () => { idx = i; put(i); paint(); hooks.face?.(); $('facePop').hidden = true; $('faceBtn').setAttribute('aria-expanded', 'false'); }; return b;
   }));
 }
 function paint() {
@@ -40,7 +40,7 @@ let stream = null, asking = 0;
 function say(s) { const t = $('toast'); t.textContent = s; t.classList.add('on'); clearTimeout(say.t); say.t = setTimeout(() => t.classList.remove('on'), 4000); }
 function camUI() {
   const on = !!stream; $('meCam').hidden = !on; $('meFace').hidden = on;
-  $('camBtn').textContent = asking ? '等待授权…' : on ? '关闭摄像头' : '打开摄像头'; $('camBtn').disabled = !!asking; $('camBtn').setAttribute('aria-pressed', on);
+  $('camBtn').textContent = asking ? '等待授权…' : on ? '关闭摄像头' : '打开摄像头'; $('camBtn').disabled = !!asking; $('camBtn').setAttribute('aria-pressed', on); if (camUI.on !== on) { camUI.on = on; hooks.cam?.(); }
 }
 function camOff() { asking = 0; stream?.getTracks().forEach(t => t.stop()); stream = null; $('meCam').srcObject = null; camUI(); }
 async function camOn() {
@@ -60,6 +60,7 @@ async function camOn() {
 
 /* ---------- 走动 ---------- */
 let api, pos = { x: 6.2, y: 7.1 }, path = [], keys = new Set(), raf = 0, last = 0;
+const hooks = {};
 const R = .22, LO = .45, G = .2;
 const inPoly = (p, x, y) => { let c = false; for (let i = 0, j = p.length - 1; i < p.length; j = i++) if ((p[i][1] > y) !== (p[j][1] > y) && x < (p[j][0] - p[i][0]) * (y - p[i][1]) / (p[j][1] - p[i][1]) + p[i][0]) c = !c; return c; };
 function free(x, y) {
@@ -92,8 +93,9 @@ function step(n) {
   keys.forEach(k => { dx += DIR[k][0]; dy += DIR[k][1]; });
   if (dx || dy) { path = []; const l = Math.hypot(dx, dy); dx *= v / l; dy *= v / l; if (free(pos.x + dx, pos.y)) pos.x += dx; if (free(pos.x, pos.y + dy)) pos.y += dy; }
   else while (path.length && v > 0) { const t = path[0], d = Math.hypot(t.x - pos.x, t.y - pos.y); if (d <= v) { pos.x = t.x; pos.y = t.y; v -= d; path.shift(); } else { pos.x += (t.x - pos.x) * v / d; pos.y += (t.y - pos.y) * v / d; v = 0; } }
-  api.follow(pos.x, pos.y); place();
+  api.follow(pos.x, pos.y); place(); hooks.move?.(pos);
   raf = keys.size || path.length ? requestAnimationFrame(step) : 0;
+  if (!raf) hooks.stop?.({ x: +pos.x.toFixed(2), y: +pos.y.toFixed(2) });
 }
 function run() { if (!raf) { last = performance.now(); raf = requestAnimationFrame(step); } }
 function place() {
@@ -112,7 +114,8 @@ function init(a) {
   addEventListener('pagehide', camOff);
 }
 return {
-  init, place, setName: n => $('meName').textContent = n,
+  init, place, hooks, faceSvg: i => face(LIST[i] ? i : 0), faceIdx: () => idx, pos: () => ({ x: pos.x, y: pos.y }), camTrack: () => stream?.getVideoTracks()[0] || null,
+  scatter: () => { for (let i = 0; i < 20; i++) { const x = 5 + Math.random() * 4.5, y = 3.2 + Math.random() * 3.6; if (free(x, y)) { pos.x = x; pos.y = y; break; } } place(); }, setName: n => $('meName').textContent = n,
   walkTo: (x, y) => { path = route(x, y); if (path.length) run(); },
   view: v => { keys.clear(); path = []; $('facePop').hidden = true; if (v === 'home') camOff(); },
 };
