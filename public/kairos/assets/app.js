@@ -133,9 +133,10 @@ function rectOf(o, part) {
 }
 
 /* ---------- 标签 ---------- */
+const DOING = { screen: '共享屏幕', video: '放视频', photo: '放照片' };
 function drawTags() {
   $('tags').replaceChildren(...room.items.filter(o => o.url || shareOn(o.uid)).map(o => {
-    const sh = shareOn(o.uid), b = mk('button', 'tag' + (sh ? ' live' : ''), sh ? `${sh.who}正在${sh.kind === 'screen' ? '共享屏幕' : '放视频'}` : title(o)); b.dataset.u = o.uid;
+    const sh = shareOn(o.uid), b = mk('button', 'tag' + (sh ? ' live' : ''), sh ? `${sh.who}正在${DOING[sh.kind]}` : title(o)); b.dataset.u = o.uid;
     b.setAttribute('aria-label', '打开' + title(o));
     if (view === 'edit') b.tabIndex = -1;
     b.onclick = () => tap(o.uid);
@@ -166,8 +167,8 @@ function embedOf(url) {
   let u; try { u = new URL(url); } catch { return null; }
   const h = u.hostname.replace(/^www\./, ''), p = u.pathname; let m;
   if (h === 'open.spotify.com' && (m = p.match(/^\/(?:intl-[\w-]+\/)?(?:embed\/)?(playlist|album|track|artist|show|episode)\/(\w+)/))) return { src: `https://open.spotify.com/embed/${m[1]}/${m[2]}`, by: 'Spotify' };
-  if ((m = (h === 'youtu.be' && p.match(/^\/([\w-]{11})/)) || (/^(m\.)?youtube\.com$/.test(h) && (p === '/watch' ? [0, u.searchParams.get('v')] : p.match(/^\/(?:shorts|embed)\/([\w-]{11})/)))) && m[1]) return { src: 'https://www.youtube.com/embed/' + encodeURIComponent(m[1]), by: 'YouTube' };
-  if (/(^|\.)bilibili\.com$/.test(h) && (m = p.match(/\/video\/(BV\w+)/))) return { src: `https://player.bilibili.com/player.html?bvid=${m[1]}&autoplay=0`, by: '哔哩哔哩' };
+  if ((m = (h === 'youtu.be' && p.match(/^\/([\w-]{11})/)) || (/^(m\.)?youtube\.com$/.test(h) && (p === '/watch' ? [0, u.searchParams.get('v')] : p.match(/^\/(?:shorts|embed)\/([\w-]{11})/)))) && m[1]) return { src: 'https://www.youtube.com/embed/' + encodeURIComponent(m[1]) + '?enablejsapi=1&origin=' + encodeURIComponent(location.origin), by: 'YouTube' };
+  if (/(^|\.)bilibili\.com$/.test(h) && (m = p.match(/\/video\/(BV\w+)/))) return { src: `https://player.bilibili.com/player.html?bvid=${m[1]}&autoplay=0&p=${+u.searchParams.get('p') || 1}`, by: '哔哩哔哩' };
   if (h === 'music.163.com' && (m = (p + u.hash).match(/(playlist|album|song)\?id=(\d+)/) || (u.search && (p + u.search).match(/(playlist|album|song)\?id=(\d+)/)))) return { src: `https://music.163.com/outchain/player?type=${{ playlist: 0, album: 1, song: 2 }[m[1]]}&id=${m[2]}&auto=0&height=430`, by: '网易云音乐' };
   return null;
 }
@@ -205,9 +206,9 @@ function makeWin(n) {
   const fs = B('全屏', () => fullWin(n)); fs.hidden = !document.fullscreenEnabled; n.fsBtn = fs;
   el.addEventListener('fullscreenchange', () => { const on = isFs(n); fs.textContent = on ? '退出全屏' : '全屏'; el.classList.remove('idle'); if (on) wake(n); });
   el.addEventListener('pointermove', () => wake(n)); hd.ondblclick = e => { if (!e.target.closest('button')) fullWin(n); };
-  hd.append(mk('b', '', n.name), n.badge, mk('span', 'u', n.sub), ...(byId(n.u) ? [B(n.media ? '缩回屏幕' : '家具模式', () => setMode(n, 'mini'))] : []), fs, B('隐藏', () => setMode(n, 'hidden')), ...(n.from ? [] : [B(n.media ? (n.kind === 'screen' ? '停止共享' : '停止放映') : '关闭', () => closeWin(n))]));
+  hd.append(mk('b', '', n.name), n.badge, mk('span', 'u', n.sub), ...(byId(n.u) ? [B(n.media ? '缩回屏幕' : '家具模式', () => setMode(n, 'mini'))] : []), fs, B('隐藏', () => setMode(n, 'hidden')), ...(n.from ? [] : [B(n.media ? (n.kind === 'video' ? '停止放映' : '停止共享') : '关闭', () => closeWin(n))]));
   const mc = mk('div', 'mc'); mc.append(B('放大', () => setMode(n, 'full')), B('隐藏', () => setMode(n, 'hidden')));
-  mc.onclick = () => setMode(n, 'full'); body.append(n.fr, mc); el.append(hd, body); if (n.tip) el.append(n.tip);
+  mc.onclick = () => setMode(n, 'full'); body.append(n.fr, mc); el.append(hd, body); if (n.tip) el.append(n.tip); if (!n.media) SYNC.attach(n);
   n.box = spot(n.u, n.by, n.wide);
   const b = wrap.getBoundingClientRect();
   el.addEventListener('pointerdown', () => focusWin(n));
@@ -221,6 +222,7 @@ function makeWin(n) {
 /* ---------- 一起看 ---------- */
 function joinUse(u, id, name) {
   const o = byId(u); if (!o?.url) return;
+  const ps = NET.peers.get(id)?.using; if (ps?.u === u && ps.with && ps.with !== NET.meId()) { id = ps.with; name = NET.peers.get(id)?.name || name; }
   openItem(u); if (o.open === 'tab') return toast(`已在新标签页打开${title(o)}`);
   const n = wins.get(u); if (n) { n.with = id; badges(); NET.stateSoon(); NET.repaint(); toast(`正在和${name}一起看`); }
 }
@@ -230,11 +232,19 @@ function badges() {
     n.badge.replaceChildren(); n.badge.hidden = !p && !fans.length;
     if (p) { const x = mk('button', 'btn', '退出一起看'); x.onclick = e => { e.stopPropagation(); if (n.media) { n.with = null; setMode(n, byId(n.u) ? 'mini' : 'hidden'); badges(); NET.stateSoon(); NET.repaint(); } else { n.with = null; badges(); NET.stateSoon(); NET.repaint(); toast('已退出，继续自己看'); } }; n.badge.append(`和${p.name}一起看 `, x); }
     else if (fans.length) n.badge.append(`${fans.join('、')}和你一起看`);
+    SYNC.changed(n);
   });
 }
 const active = () => [...wins.values()].filter(n => n.mode !== 'hidden' && !(n.media && !n.with)).sort((a, b) => (b.z || 0) - (a.z || 0));
 function using() { const l = active(), n = l[0]; return n ? { u: n.u, with: n.with || null, m: !!n.media, all: l.filter(x => !x.media).map(x => x.u) } : null; }
 function endWith(id, name, all) { wins.forEach(n => { if (n.with === id && !n.media && !all.includes(n.u)) { n.with = null; toast(`${name}离开了，你可以继续自己看`); } }); badges(); }
+
+const fansOf = n => [...NET.peers.values()].filter(q => q.using?.with === NET.meId() && !q.using.m && q.using.u === n.u);
+function sharePage(n) {
+  const o = byId(n.u), dev = [o, ...room.items].find(x => isDev(x) && !shareOn(x.uid)); if (!dev) return toast('电视、电脑、平板、手机都在用');
+  $('ptOpen').href = n.url; $('ptGo').onclick = () => { $('pageTip').close(); startScreen(dev.uid); }; $('ptNo').onclick = () => $('pageTip').close(); $('pageTip').showModal();
+}
+SYNC.init({ wins: () => wins, me: () => NET.meId(), fans: fansOf, send: (d, to) => NET.sync(d, to), toast, name: id => NET.peers.get(id)?.name || '朋友', get canScreen() { return canScreen; }, sharePage });
 
 /* ---------- 共享：自己的屏幕或视频，放到房间里的电子产品上 ---------- */
 const mine = () => wins.get('m:me');
@@ -252,7 +262,9 @@ function menu(o) {
   const M = $('menu'), b = wrap.getBoundingClientRect(), I = (t, f, sub) => { const x = mk('button', '', t); if (sub) x.append(mk('small', '', sub)); x.onclick = () => { M.hidden = true; f(x); }; return x; };
   M.replaceChildren(mk('b', '', title(o)));
   if (o.url) M.append(I('打开网页', () => openItem(o.uid), showUrl(o.url)));
-  M.append(I('共享屏幕 · 文字清楚', () => startScreen(o.uid), '网页、文档、设计稿'), I('共享屏幕 · 视频流畅', () => startScreen(o.uid, 'video'), '视频、动画、游戏'), I('放我的视频', () => { pick.u = o.uid; $('showFile').click(); }, '从这台电脑选，不上传'));
+  if (canScreen) M.append(I('共享屏幕 · 文字清楚', () => startScreen(o.uid), '网页、文档、设计稿'), I('共享屏幕 · 视频流畅', () => startScreen(o.uid, 'video'), '视频、动画、游戏'));
+  else M.append(I('共享手机屏幕', () => $('phoneTip').showModal(), '浏览器不支持，看替代办法'));
+  M.append(I('放照片', () => { pick.u = o.uid; $('showPics').click(); }, '可以一次选多张，不上传'), I('放我的视频', () => { pick.u = o.uid; $('showFile').click(); }, '从这台电脑选，不上传'));
   M.hidden = false; const r = rectOf(o), w = M.offsetWidth, h = M.offsetHeight;
   let x = r.x - b.left + r.w + 10; if (x + w > b.width - 8) x = r.x - b.left - w - 10;
   M.style.left = Math.max(8, Math.min(b.width - w - 8, x)) + 'px'; M.style.top = Math.max(8, Math.min(b.height - h - 76, r.y - b.top)) + 'px';
@@ -265,7 +277,36 @@ function chooser() {
   M.hidden = false; M.style.left = Math.max(8, (b.width - M.offsetWidth) / 2) + 'px'; M.style.top = b.height - M.offsetHeight - 80 + 'px';
 }
 addEventListener('pointerdown', e => { if (!$('menu').hidden && !e.target.closest('#menu,#showBtn')) $('menu').hidden = true; }, true);
-const pick = { u: null };
+const pick = { u: null }, isPhone = /Android|iPhone|iPad|iPod/.test(navigator.userAgent) || navigator.maxTouchPoints > 1 && /Mac/.test(navigator.platform), canScreen = !!navigator.mediaDevices?.getDisplayMedia && !isPhone;
+/* 放照片：画到画布再直接推给朋友，手机平板也能用 */
+async function startPhotos(files, u) {
+  const list = files.filter(f => f.type.startsWith('image/')).slice(0, 30); if (!list.length) return toast('请选择图片'); if (!ready(u)) return;
+  const c = mk('canvas'), g = c.getContext('2d'), v = mk('video'); let i = 0, bm = null, go = 0; c.width = 1280; c.height = 960;
+  const paint = () => { g.fillStyle = '#2B1B10'; g.fillRect(0, 0, c.width, c.height); if (bm) g.drawImage(bm, 0, 0, c.width, c.height); };
+  if (!c.captureStream) return toast('这个浏览器不能放照片，请更新浏览器');
+  const open = async k => {
+    const my = ++go; let b; try { b = await createImageBitmap(list[k]); } catch { return toast('这张图片打不开'); }
+    if (my !== go || !c.isConnected && n && mine() !== n) return b.close();
+    const s = Math.min(1, 1920 / Math.max(b.width, b.height)); c.width = Math.max(2, Math.round(b.width * s / 2) * 2); c.height = Math.max(2, Math.round(b.height * s / 2) * 2);
+    bm?.close(); bm = b; i = k; paint(); const t = n?.el.querySelector('.u'); if (t) t.textContent = `${i + 1} / ${list.length}`;
+  };
+  let n = null; await open(0); if (!bm) return; if (view !== 'room' || !ready(u)) return;
+  const s = c.captureStream(5), tr = s.getVideoTracks()[0]; tr.contentHint = 'detail'; const beat = setInterval(paint, 400);
+  v.autoplay = v.playsInline = v.muted = true; v.srcObject = s;
+  n = makeWin({ key: 'm:me', media: true, kind: 'photo', u, url: '', fr: v, name: '你的照片', sub: `1 / ${list.length}`, stream: s, end: () => { clearInterval(beat); go++; bm?.close(); bm = null; } });
+  if (list.length > 1) { const B = (t, d) => { const b = mk('button', 'btn', t); b.onclick = e => { e.stopPropagation(); open((i + d + list.length) % list.length); }; return b; }; n.el.querySelector('.u').after(B('上一张', -1), B('下一张', 1)); }
+  NET.startShow(v, '照片', u, s, '', 'photo'); drawTags(); shareUI();
+}
+/* Safari 没有 video.captureStream：用画布和音频节点转一道 */
+function tapVideo(v) {
+  if (v.captureStream || v.mozCaptureStream) return null;
+  const c = mk('canvas'), g = c.getContext('2d'); if (!c.captureStream) return null;
+  const k = Math.min(1, 1280 / Math.max(v.videoWidth, v.videoHeight, 1)); c.width = Math.max(2, Math.round(v.videoWidth * k / 2) * 2); c.height = Math.max(2, Math.round(v.videoHeight * k / 2) * 2);
+  const paint = () => { try { g.drawImage(v, 0, 0, c.width, c.height); } catch {} }; paint();
+  const s = c.captureStream(24), id = setInterval(paint, 42); let ac = null;
+  try { ac = new (window.AudioContext || window.webkitAudioContext)(); const a = ac.createMediaElementSource(v), d = ac.createMediaStreamDestination(); a.connect(d); a.connect(ac.destination); const t = d.stream.getAudioTracks()[0]; if (t) s.addTrack(t); ac.resume().catch(() => {}); v.addEventListener('play', () => ac.resume().catch(() => {})); } catch {}
+  return { s, end: () => { clearInterval(id); s.getTracks().forEach(t => t.stop()); ac?.close().catch(() => {}); } };
+}
 function ready(u) { const sh = shareOn(u); if (sh && sh.who !== '你') { toast(`${sh.who}正在用这件产品`); return false; } const m = mine(); if (m) closeWin(m); return true; }
 async function startScreen(u, mode) {
   if (!navigator.mediaDevices?.getDisplayMedia) return toast('这个浏览器不能共享屏幕，请用电脑上的 Chrome 或 Edge');
@@ -291,7 +332,7 @@ function startLocal(file, u) {
   const v = mk('video'); v.controls = v.playsInline = true; v.src = URL.createObjectURL(file);
   const n = makeWin({ key: 'm:me', media: true, kind: 'video', u, url: '', fr: v, name: '放映', sub: file.name }); n.src = v.src;
   v.onerror = () => { if (mine() === n) { closeWin(n); toast('这个视频格式浏览器放不了，建议用 mp4'); } };
-  v.onloadeddata = () => { v.onloadeddata = null; if (mine() === n) NET.startShow(v, file.name, u); }; v.play().catch(() => {}); drawTags(); shareUI();
+  v.onloadeddata = () => { v.onloadeddata = null; if (mine() !== n) return; const t = tapVideo(v); if (t) { n.end = t.end; NET.startShow(v, file.name, u, t.s, 'video', 'video'); } else NET.startShow(v, file.name, u); }; v.play().catch(() => {}); drawTags(); shareUI();
 }
 /* 朋友的共享：自动出现在对应产品的屏幕里，默认静音，点开才有声音 */
 function mediaLive(p) {
@@ -300,15 +341,17 @@ function mediaLive(p) {
   let n = wins.get(key);
   if (!n) {
     const v = mk('video'); v.autoplay = v.playsInline = v.muted = true; v.srcObject = p.show;
-    n = makeWin({ key, media: true, kind, from: p.id, u, url: '', fr: v, name: kind === 'screen' ? `${p.name}的屏幕` : `${p.name}的放映`, sub: kind === 'screen' ? '' : p.media.name, start: u ? 'mini' : 'hidden' });
-    toast(`${p.name}开始${kind === 'screen' ? '共享屏幕' : '放视频'}`);
+    n = makeWin({ key, media: true, kind, from: p.id, u, url: '', fr: v, name: p.name + { screen: '的屏幕', video: '的放映', photo: '的照片' }[kind], sub: kind === 'video' ? p.media.name : '', start: u ? 'mini' : 'hidden' });
+    toast(`${p.name}开始${DOING[kind]}`);
   } else n.fr.srcObject = p.show;
   n.fr.play().catch(() => {}); drawTags();
 }
 function watchMedia(p) { mediaLive(p); const n = wins.get('m:' + p.id); if (n) { setMode(n, 'full'); NET.stateSoon(); } }
 setInterval(() => wins.forEach(async n => { const p = n.from && NET.peers.get(n.from); if (!p || n.mode !== 'full') return; const q = await NET.quality(p).catch(() => ''); const u = n.el.querySelector('.u'); if (q && u) u.textContent = q; }), 2000);
-function shareUI() { const m = mine(); $('showBtn').textContent = m ? (m.kind === 'screen' ? '停止共享' : '停止放映') : '共享'; $('showBtn').setAttribute('aria-pressed', !!m); }
+function shareUI() { const m = mine(); $('showBtn').textContent = m ? (m.kind === 'video' ? '停止放映' : '停止共享') : '共享'; $('showBtn').setAttribute('aria-pressed', !!m); }
 $('showBtn').onclick = () => { const m = mine(); if (m) { closeWin(m); toast('已停止'); } else if ($('menu').hidden) chooser(); else $('menu').hidden = true; };
+$('showPics').onchange = () => { const f = [...$('showPics').files]; $('showPics').value = ''; if (f.length && byId(pick.u)) startPhotos(f, pick.u); };
+$('tipOk').onclick = () => $('phoneTip').close();
 $('showFile').onchange = () => { const f = $('showFile').files[0]; $('showFile').value = ''; if (f && byId(pick.u)) startLocal(f, pick.u); };
 /* 找一个最少遮挡可点家具、标签和已开窗口的位置 */
 function spot(u, by, wide) {
@@ -360,7 +403,8 @@ function fitMini(n) {
 }
 function focusWin(n) { n.el.style.zIndex = n.z = ++ztop; if (cur !== n) { cur = n; NET.stateSoon(); } dock(); }
 function closeWin(n) {
-  if (n.media && !n.from) { NET.stopShow(); n.fr.onerror = null; n.fr.pause(); n.stream?.getTracks().forEach(t => { t.onended = null; t.stop(); }); n.fr.srcObject = null; if (n.src) { n.fr.removeAttribute('src'); n.fr.load(); URL.revokeObjectURL(n.src); } }
+  SYNC.detach(n);
+  if (n.media && !n.from) { NET.stopShow(); n.end?.(); n.fr.onerror = null; n.fr.pause(); n.stream?.getTracks().forEach(t => { t.onended = null; t.stop(); }); n.fr.srcObject = null; if (n.src) { n.fr.removeAttribute('src'); n.fr.load(); URL.revokeObjectURL(n.src); } }
   if (n.from) n.fr.srcObject = null;
   n.el.remove(); wins.delete(n.key); if (n.media) { drawTags(); shareUI(); } NET.stateSoon(); setTimeout(NET.repaint); if (cur === n) cur = null; dock(); place(); }
 function dock() {
@@ -372,8 +416,20 @@ function dock() {
 
 /* ---------- 指针：拖视角 / 点家具 / 编辑拖家具 ---------- */
 let act = null;
+const fingers = new Map(); let two = false;   // 双指缩放
+function pinch(e) {
+  if (e.pointerType !== 'touch') return false; fingers.set(e.pointerId, { x: e.clientX, y: e.clientY }); if (fingers.size < 2) return two;
+  if (act?.before && act.moved) { room = JSON.parse(act.before); draw(); } act = null; two = true; svg.setPointerCapture(e.pointerId); return true;
+}
+function pinchMove(e) {
+  if (!two) { if (fingers.has(e.pointerId)) fingers.set(e.pointerId, { x: e.clientX, y: e.clientY }); return false; }
+  const a = fingers.get(e.pointerId), o = [...fingers].find(([k]) => k !== e.pointerId)?.[1]; if (!a || !o) return true;
+  const d0 = Math.hypot(a.x - o.x, a.y - o.y), p = pt(e), q = pt({ clientX: a.x, clientY: a.y }), m = pt({ clientX: (e.clientX + o.x) / 2, clientY: (e.clientY + o.y) / 2 });
+  fingers.set(e.pointerId, { x: e.clientX, y: e.clientY }); V.x -= (p.x - q.x) / 2; V.y -= (p.y - q.y) / 2; zoomAt(Math.hypot(e.clientX - o.x, e.clientY - o.y) / (d0 || 1), m.x, m.y); return true;
+}
 svg.addEventListener('pointerdown', e => {
   if (view === 'home' || e.button) return;
+  if (pinch(e)) return;
   if (e.target.classList?.contains('grip')) { const o = byId(sel); act = { t: 'size', o, before: JSON.stringify(room), moved: false }; svg.setPointerCapture(e.pointerId); return; }
   const t = e.target.closest?.('.it'), o = t && byId(t.dataset.u);
   if (view === 'edit' && o) {
@@ -382,6 +438,7 @@ svg.addEventListener('pointerdown', e => {
   svg.setPointerCapture(e.pointerId);
 });
 svg.addEventListener('pointermove', e => {
+  if (pinchMove(e)) return;
   if (!act) { const t = e.target.closest?.('.it.bound'); hoverU(view === 'room' && t ? t.dataset.u : null); return; }
   if (act.t === 'size') { const d = DEF[act.o.id]; act.moved = true; act.o.w = +ACCT.clampW(2 * Math.abs(pt(e).x / S - MX - act.o.x), ...d.px).toFixed(3); draw(); sizeUI(); return; }
   if (act.t === 'pan') {
@@ -399,6 +456,7 @@ const up = e => {
   if ((a.t === 'move' || a.t === 'size') && a.moved) { hist.push(a.before); state(); }
 };
 svg.addEventListener('pointerup', up); svg.addEventListener('pointercancel', up);
+for (const t of ['pointerup', 'pointercancel', 'lostpointercapture']) svg.addEventListener(t, e => { fingers.delete(e.pointerId); if (!fingers.size) two = false; });
 let hv = null; function hoverU(u) { if (hv === u) return; if (hv) hot(hv, false); hv = u; if (u) hot(u, true); }
 svg.addEventListener('pointerleave', () => hoverU(null));
 
@@ -408,6 +466,7 @@ function state() { const d = dirty(); $('dirty').textContent = d ? '有未保存
 function change(f) { hist.push(JSON.stringify(room)); if (hist.length > 60) hist.shift(); f(); draw(); state(); }
 function select(u) { sel = u; draw(); panel(); }
 function panel() {
+  document.body.classList.toggle('picked', !!sel);
   const o = sel && byId(sel); $('pObj').hidden = !o; $('pRoom').hidden = !!o;
   if (o) {
     $('pImg').src = art(DEF[o.id]); sizeUI(); $('pKind').textContent = DEF[o.id].name; $('pName').value = o.name || '';
@@ -525,7 +584,7 @@ async function quit() {
   }
   badUrl = false; go('room');
 }
-$('quitEdit').onclick = quit;
+$('quitEdit').onclick = quit; $('setRoom').onclick = () => { select(null); document.body.classList.toggle('roomset'); }; $('pClose').onclick = () => { document.body.classList.remove('roomset'); select(null); };
 $('toEdit').onclick = () => go('edit');
 function ask(text, yes, midT) {
   $('askT').textContent = text; $('askYes').textContent = yes; $('askMid').textContent = midT || ''; $('askMid').hidden = !midT;
@@ -542,9 +601,10 @@ function go(v) {
   view = v; document.body.dataset.view = v; sel = null; hoverU(null);
   $('menu').hidden = true;
   if (v === 'home') { V.z = 1; [...wins.values()].forEach(closeWin); if (NET.inRoom()) NET.leave(); $('homeNote').textContent = NET.urlRoom() ? '你打开的是共享房间的链接，进入后会看到正在房间里的人。' : '演示版：房间改动只保存在这台电脑的浏览器里。'; homeNote(); }
-  if (v === 'edit') { hist = []; lib(); panel(); state(); }
+  document.body.classList.remove('picked', 'roomset'); if (v === 'edit') { hist = []; lib(); panel(); state(); }
   if (v === 'room') {   // 绑定改过或删掉的，关掉旧窗口
-    [...wins.values()].forEach(n => { if (n.media) { if (n.u && !byId(n.u)) setMode(n, 'full'); return; } const o = byId(n.u); if (!o || o.url !== n.url || o.open === 'tab') closeWin(n); else { n.el.querySelector('header b').textContent = title(o); n.el.setAttribute('aria-label', title(o)); } });
+    [...wins.values()].forEach(n => { if (n.media) { if (n.u && !byId(n.u)) setMode(n, 'full'); return; } const o = byId(n.u); if (o?.url && o.url !== n.url && o.open !== 'tab' && n.mode !== 'hidden') { const k = { with: n.with, box: n.box, mode: n.mode }; if (n.mode === 'full' && n.el.offsetWidth) Object.assign(k.box, { w: n.el.offsetWidth, h: n.el.offsetHeight }); closeWin(n); openItem(o.uid); const w = wins.get(o.uid); if (w) { w.with = k.with; w.box = k.box; setMode(w, k.mode); badges(); toast(`${title(o)}换成了新网页`); } }   // 跟到新网址
+    else if (!o || o.url !== n.url || o.open === 'tab') closeWin(n); else { n.el.querySelector('header b').textContent = title(o); n.el.setAttribute('aria-label', title(o)); } });
     dock();
   }
   ME.view(v); draw(); requestAnimationFrame(look);
@@ -592,7 +652,7 @@ NET.init({
   name: () => nick, dock, using, toast, joinUse, watchMedia, peersChanged: () => { badges(); NET.status(); },
   screen: (x, y) => screenAt(x, y), itemName: u => { const o = byId(u); return o?.url ? title(o) : ''; },
   alreadyWith: (id, p) => [...wins.values()].some(n => n.with === id && (p.media ? n.media && n.mode === 'full' : n.u === p.using?.u)),
-  mediaLive,
+  mediaLive, sync: m => SYNC.onMsg(m),
   roomData: () => ({ items: saved.items, floors: saved.floors, walls: saved.walls, defs: [...new Set(saved.items.map(o => o.id))].map(i => DEF[i]).filter(d => d?.custom).map(d => ({ id: d.fid, path: d.path, layer: d.layer, name: d.name, px_w: d.px[0], px_h: d.px[1], w: d.w })) }),
   canOnline: () => ACCT.pro(),
   applyRoom: d => swapRoom(safeRoom(d)),

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>共此刻 KAIROS</title>
-<link rel="stylesheet" href="assets/style.css?v=11252016">
+<link rel="stylesheet" href="assets/style.css?v=11252133">
 </head>
 <body data-view="home">
 
@@ -21,7 +21,7 @@
   <b>编辑空间</b>
   <span id="dirty" role="status"></span>
   <span class="grow"></span>
-  <button class="btn" id="undo">撤销</button>
+  <button class="btn narrow" id="setRoom">铺装</button><button class="btn" id="undo">撤销</button>
   <button class="btn" id="resetRoom">恢复默认</button>
   <button class="btn" id="quitEdit">退出</button>
   <button class="btn primary" id="saveEdit">保存</button>
@@ -39,7 +39,7 @@
   <div id="tags"></div>
   <div id="peers"></div>
   <div id="me"><div id="meFace"></div><video id="meCam" autoplay muted playsinline hidden></video><span id="meName"></span></div>
-  <div id="ctl"><button class="btn" id="camBtn" aria-pressed="false">打开摄像头</button><button class="btn" id="micBtn" aria-pressed="false" hidden>打开麦克风</button><button class="btn primary" id="fixBtn" hidden>重新连接</button><button class="btn" id="showBtn">共享</button><input id="showFile" type="file" accept="video/*" hidden><button class="btn" id="faceBtn" aria-expanded="false">换头像</button><div id="facePop" hidden></div></div>
+  <div id="ctl"><button class="btn" id="camBtn" aria-pressed="false">打开摄像头</button><button class="btn" id="micBtn" aria-pressed="false" hidden>打开麦克风</button><button class="btn primary" id="fixBtn" hidden>重新连接</button><button class="btn" id="showBtn">共享</button><input id="showFile" type="file" accept="video/*" hidden><input id="showPics" type="file" accept="image/*" multiple hidden><button class="btn" id="faceBtn" aria-expanded="false">换头像</button><div id="facePop" hidden></div></div>
   <div id="zoom">
     <button class="btn" id="zo" aria-label="缩小">－</button><span id="zv"></span><button class="btn" id="zi" aria-label="放大">＋</button><button class="btn" id="zf">看全屋</button>
   </div>
@@ -48,6 +48,7 @@
 </main>
 
 <aside id="props" aria-label="属性">
+  <button class="btn narrow" id="pClose">收起</button>
   <section id="pObj">
     <div class="phead"><img id="pImg" alt=""><h2 id="pKind"></h2></div>
     <div id="pSizeBox" hidden><label>大小<input type="range" id="pSize" min="0" max="100" step="1"></label><p class="hint" id="pSizeT"></p><button class="btn" id="pSize0">恢复默认大小</button></div>
@@ -112,14 +113,17 @@
   </div>
   <input id="upFile" type="file" accept="image/png,.png" hidden><p class="err" id="upErr" role="alert"></p>
   <div class="row end"><button class="btn" id="upNo">取消</button><button class="btn primary" id="upOk" hidden>放进我的家具</button></div></dialog>
+<dialog id="pageTip"><h2>共享这个网页</h2><p>别的网站不让我们读取画面，需要你打开它再选一次。</p><div class="row"><a class="btn" id="ptOpen" target="_blank" rel="noopener">1. 打开网页</a><button class="btn primary" id="ptGo">2. 选它来共享</button><button class="btn" id="ptNo">取消</button></div><p class="hint">第 2 步选“标签页”里的这个网页，要声音就勾上“共享音频”。</p></dialog>
+<dialog id="phoneTip"><h2>手机怎么共享屏幕</h2><p>手机和平板的浏览器不允许网页读取屏幕，可以这样代替：</p><ol><li><b>放照片</b>：把截图、作品放到房间的平板或手机里，朋友马上看到。</li><li><b>录屏后放</b>：用系统自带的录屏录一段，再点“放我的视频”。</li><li><b>旁边有电脑</b>：把手机投屏到电脑，再从电脑共享那个窗口，就是实时的。</li></ol><div class="row end"><button class="btn primary" id="tipOk">知道了</button></div></dialog>
 <div id="toast" role="status"></div>
 <dialog id="ask"><p id="askT"></p><div class="row"><button class="btn" id="askNo">取消</button><button class="btn" id="askMid"></button><button class="btn primary" id="askYes"></button></div></dialog>
 
-<script src="assets/data.js?v=11252016"></script>
-<script src="assets/me.js?v=11252016"></script>
-<script src="assets/net-config.js?v=11252016"></script>
-<script src="assets/acct.js?v=11252016"></script>
-<script src="assets/net.js?v=11252016"></script>
-<script src="assets/app.js?v=11252016"></script>
+<script src="assets/data.js?v=11252133"></script>
+<script src="assets/me.js?v=11252133"></script>
+<script src="assets/net-config.js?v=11252133"></script>
+<script src="assets/acct.js?v=11252133"></script>
+<script src="assets/net.js?v=11252133"></script>
+<script src="assets/sync.js?v=11252133"></script>
+<script src="assets/app.js?v=11252133"></script>
 </body>
 </html>

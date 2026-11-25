@@ -11,7 +11,7 @@ const MSG = {
 };
 const say = e => { const s = String(e?.code || '') + ' ' + (e?.message || ''); for (const k in MSG) if (s.includes(k)) return MSG[k]; return /fetch|network|Failed|Load failed/i.test(s) ? '网络连不上，请检查后重试' : '出错了，请稍后再试'; };
 let libP = null;
-const lib = () => window.supabase ? Promise.resolve() : libP ||= new Promise((ok, no) => { const s = document.createElement('script'); s.src = 'assets/supabase.js?v=11252016'; s.onload = ok; s.onerror = () => { libP = null; no(Error('network')); }; document.head.append(s); });
+const lib = () => window.supabase ? Promise.resolve() : libP ||= new Promise((ok, no) => { const s = document.createElement('script'); s.src = 'assets/supabase.js?v=11252133'; s.onload = ok; s.onerror = () => { libP = null; no(Error('network')); }; document.head.append(s); });
 async function rpc(f, a) { const { data, error } = await sb.rpc(f, a); if (error) throw error; return data; }
 const src = path => `${cfg.url}/storage/v1/object/public/${BUCKET}/${path}`;
 const maxW = (pw, ph) => Math.min(MAXW, MAXH * pw / ph), clampW = (w, pw, ph) => Math.max(Math.min(MINW, maxW(pw, ph)), Math.min(maxW(pw, ph), +w || 1));

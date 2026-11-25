@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>共此刻 管理页</title><link rel="stylesheet" href="assets/style.css?v=11252016">
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>共此刻 管理页</title><link rel="stylesheet" href="assets/style.css?v=11252133">
 <style>html,body{overflow:auto;height:auto}main{max-width:1080px;margin:auto;padding:26px 20px 60px}h1{font-size:32px;margin:0}h2{font-size:23px;margin:34px 0 12px}.top{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
 .use{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:26px 34px}.use b{font-size:20px;white-space:nowrap;font-weight:600;font-variant-numeric:tabular-nums}.use p{margin:2px 0 8px}.barx{height:12px;border:2px solid var(--ink);border-radius:8px;overflow:hidden;background:var(--white)}.barx i{display:block;height:100%;background:var(--green)}.barx.mid i{background:var(--yellow)}.barx.hi i{background:var(--orange)}
 .scroll{overflow-x:auto;border:2px solid var(--ink);border-radius:10px;background:var(--white)}table{border-collapse:collapse;width:100%}th,td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap;font-size:14px}th{background:#FBE6BF}tr:last-child td{border:0}
@@ -14,7 +14,7 @@
 <h2>上传的图片</h2><div class="tools"><span id="picWho" class="small">全部，最新在前</span><button class="btn" id="picAll" hidden>看全部</button><button class="btn" id="pPrev">上一页</button><button class="btn" id="pNext">下一页</button></div><div class="pics" id="pics"></div>
 </div></main>
 <div id="toast" role="status"></div>
-<script src="assets/supabase.js?v=11252016"></script><script src="assets/net-config.js?v=11252016"></script>
+<script src="assets/supabase.js?v=11252133"></script><script src="assets/net-config.js?v=11252133"></script>
 <script>
 (async () => {
 const $ = id => document.getElementById(id), cfg = window.KAIROS_NET?.account, mk = (t, x, c) => { const e = document.createElement(t); if (x != null) e.textContent = x; if (c) e.className = c; return e; };
