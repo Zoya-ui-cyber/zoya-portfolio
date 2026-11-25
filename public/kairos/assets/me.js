@@ -113,7 +113,7 @@ function init(a) {
   addEventListener('keyup', e => keys.delete(e.code)); addEventListener('blur', () => keys.clear());
   addEventListener('pagehide', camOff);
 }
-return {
+return { setFace: i => { if (LIST[i]) { idx = i; put(i); paint(); } },
   init, place, hooks, faceSvg: i => face(LIST[i] ? i : 0), faceIdx: () => idx, pos: () => ({ x: pos.x, y: pos.y }), camTrack: () => stream?.getVideoTracks()[0] || null,
   scatter: () => { for (let i = 0; i < 20; i++) { const x = 5 + Math.random() * 4.5, y = 3.2 + Math.random() * 3.6; if (free(x, y)) { pos.x = x; pos.y = y; break; } } place(); }, setName: n => $('meName').textContent = n,
   walkTo: (x, y) => { path = route(x, y); if (path.length) run(); },

@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { ask, overLimit } from "@/lib/kairos-usage";
 
 // 共此刻：签发 Cloudflare TURN 临时凭证。密钥只放在服务器环境变量里。
 const TTL = 4 * 3600;
@@ -10,7 +10,7 @@ type Ice = { urls: string | string[]; username?: string; credential?: string };
 
 export async function POST(request: Request) {
   const json = (body: unknown, status = 200) =>
-    NextResponse.json(body, { status, headers: { "Cache-Control": "no-store" } });
+    Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
 
   const id = process.env.KAIROS_TURN_ID?.trim();
   const token = process.env.KAIROS_TURN_TOKEN?.trim();
@@ -23,6 +23,9 @@ export async function POST(request: Request) {
   } catch {}
   if (!sameOrigin) return json({ error: "forbidden" }, 403);
 
+  // 配好账号后端后，只有高级账号能用中转
+  if (process.env.KAIROS_ACCOUNT_URL && !(await ask("kairos_can_online", request.headers.get("authorization")))) return json({ error: "forbidden" }, 403);
+
   const ip = request.headers.get("x-forwarded-for")?.split(",")[0].trim() || "?";
   const now = Date.now();
   if (hits.size > 2000) hits.clear();
@@ -30,6 +33,8 @@ export async function POST(request: Request) {
   if (hit && hit.end > now) {
     if (++hit.n > LIMIT) return json({ error: "slow down" }, 429);
   } else hits.set(ip, { n: 1, end: now + WINDOW });
+
+  if (await overLimit()) return json({ error: "quota" }, 503);
 
   try {
     const r = await fetch(

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>共此刻 KAIROS</title>
-<link rel="stylesheet" href="assets/style.css?v=11251546">
+<link rel="stylesheet" href="assets/style.css?v=11252016">
 </head>
 <body data-view="home">
 
@@ -29,6 +29,8 @@
 
 <aside id="lib" aria-label="家具库">
   <h2>家具库</h2>
+  <div class="tabs" id="libTabs" role="tablist" hidden><button id="tabAll" role="tab" aria-selected="true">全部</button><button id="tabMine" role="tab" aria-selected="false">我的</button></div>
+  <button class="btn primary" id="upBtn" hidden>＋ 上传家具</button>
   <input id="libQ" type="search" placeholder="搜索家具" aria-label="搜索家具">
   <div id="libGrid"></div>
 </aside>
@@ -48,6 +50,7 @@
 <aside id="props" aria-label="属性">
   <section id="pObj">
     <div class="phead"><img id="pImg" alt=""><h2 id="pKind"></h2></div>
+    <div id="pSizeBox" hidden><label>大小<input type="range" id="pSize" min="0" max="100" step="1"></label><p class="hint" id="pSizeT"></p><button class="btn" id="pSize0">恢复默认大小</button></div>
     <label>名称<input id="pName" maxlength="16"></label>
     <label>链接<input id="pUrl" placeholder="example.com" spellcheck="false" autocomplete="off"></label>
     <p class="err" id="pErr" role="alert"></p>
@@ -73,7 +76,16 @@
   <div class="card">
     <p class="logo">共此刻 KAIROS</p>
     <h1>和朋友一起，<br>进入互联网。</h1>
-    <p>一个可以布置的 2D 房间。网页不在标签页里，在电脑、电视和书桌上。</p>
+    <p id="cardIntro">一个可以布置的 2D 房间。网页不在标签页里，在电脑、电视和书桌上。</p>
+    <form id="auth" hidden>
+      <div id="auMailBox"><label for="auMail">邮箱</label><input id="auMail" type="email" maxlength="200" autocomplete="email"></div>
+      <div id="auPassBox"><label for="auPass" id="auPassL">密码</label><input id="auPass" type="password" maxlength="72"></div>
+      <p class="err" id="auMsg" role="status"></p>
+      <button class="btn primary big" id="auGo">登录</button>
+      <div class="row"><button type="button" class="link" id="auSwap"></button><button type="button" class="link" id="auForgot"></button></div>
+      <button type="button" class="btn" id="auBrowse">先逛逛，不用注册</button>
+    </form>
+    <p id="acct" hidden><span id="acMail"></span><b id="acRole"></b><a class="link" id="acAdmin" href="admin.html" target="_blank" hidden>管理页</a><button class="link" id="acOut">退出登录</button></p>
     <form id="enter">
       <span class="lab">选个头像</span><div id="faces" class="faces" role="group" aria-label="头像"></div>
       <label for="nick">昵称</label>
@@ -86,13 +98,28 @@
 
 <div id="wins"></div>
 <dialog id="inv"><h2>邀请朋友</h2><p>把链接发给朋友，打开就能进这个房间。只有你能布置，朋友可以使用。</p><input id="invLink" readonly aria-label="邀请链接"><p class="hint" id="invN"></p><p class="hint">你离线时，朋友看不到最新的布置。</p><div class="row"><button class="btn primary" id="invCopy">复制链接</button><button class="btn" id="invClose">关闭</button></div></dialog>
+<dialog id="up" aria-labelledby="upT"><h2 id="upT">上传家具</h2>
+  <div id="upDrop"><p><b>把 PNG 拖到这里</b>，或按 Ctrl+V 粘贴</p><button class="btn primary" id="upPick">选择图片</button><p class="hint">最好是透明背景。会自动裁掉空白、压缩大小，原图不超过 10 MB。放进房间后，拿到房间链接的朋友也能看到。</p></div>
+  <div id="upForm" hidden>
+    <div id="upStage" aria-hidden="true"><span class="cap">客厅，家具最大不超过这个范围</span><img class="ref sofa" alt="" src="assets/furniture/sofa.png"><img class="ref plant" alt="" src="assets/furniture/plant.png"><div id="upItem"><img alt=""><i></i></div></div>
+    <div class="side">
+      <label>名称<input id="upName" maxlength="16" placeholder="我的家具"></label>
+      <span class="lab2">摆放</span><div class="chips" id="upLayer"><button type="button" class="chip" data-l="object">放地上</button><button type="button" class="chip" data-l="tabletop">放桌上</button><button type="button" class="chip" data-l="wall">挂墙上</button><button type="button" class="chip" data-l="floor">铺地毯</button></div>
+      <span class="lab2">大小，差不多像</span><div class="chips" id="upPre"></div>
+      <input type="range" id="upSize" min="0" max="100" step="1" aria-label="大小"><p class="hint" id="upText"></p>
+      <p class="warnT" id="upWarn"></p><button type="button" class="link" id="upAgain">换一张图</button>
+    </div>
+  </div>
+  <input id="upFile" type="file" accept="image/png,.png" hidden><p class="err" id="upErr" role="alert"></p>
+  <div class="row end"><button class="btn" id="upNo">取消</button><button class="btn primary" id="upOk" hidden>放进我的家具</button></div></dialog>
 <div id="toast" role="status"></div>
 <dialog id="ask"><p id="askT"></p><div class="row"><button class="btn" id="askNo">取消</button><button class="btn" id="askMid"></button><button class="btn primary" id="askYes"></button></div></dialog>
 
-<script src="assets/data.js?v=11251546"></script>
-<script src="assets/me.js?v=11251546"></script>
-<script src="assets/net-config.js?v=11251546"></script>
-<script src="assets/net.js?v=11251546"></script>
-<script src="assets/app.js?v=11251546"></script>
+<script src="assets/data.js?v=11252016"></script>
+<script src="assets/me.js?v=11252016"></script>
+<script src="assets/net-config.js?v=11252016"></script>
+<script src="assets/acct.js?v=11252016"></script>
+<script src="assets/net.js?v=11252016"></script>
+<script src="assets/app.js?v=11252016"></script>
 </body>
 </html>

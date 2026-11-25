@@ -4,6 +4,7 @@ const K = window.KAIROS, $ = id => document.getElementById(id), NS = 'http://www
 const S = 100, MX = .8, MY = 2.3, KEY = 'kairos-room-v1', NICK = 'kairos-nick';
 const FLOORS = { plank: '浅木板', plankV: '竖木板', deck: '深木板', terrazzo: '水磨石', checker: '绿格', tile: '橙砖', dots: '十字花', stripe: '绿条纹', cream: '奶油' };
 const DEF = Object.fromEntries(K.items.map(i => [i.id, i]));
+const art = d => d.src || 'assets/furniture/' + d.file;
 const copy = o => JSON.parse(JSON.stringify(o));
 const load = k => { try { return localStorage.getItem(k); } catch { return null; } };
 const store = (k, v) => { try { localStorage.setItem(k, v); return true; } catch { return false; } };
@@ -72,7 +73,7 @@ const baseFill = {};
 Object.keys(K.rooms).forEach(r => baseFill['f' + r] = floorEl(r).getAttribute('fill'));
 [0, 1, 2].forEach(i => baseFill['w' + i] = wallEl(i).getAttribute('fill'));
 const skin = f => f.slice(7, -1);
-const size = o => { const d = DEF[o.id], w = d.w * S; return { w, h: w * d.px[1] / d.px[0] }; };
+const size = o => { const d = DEF[o.id], w = (d.custom && o.w || d.w) * S; return { w, h: w * d.px[1] / d.px[0] }; };
 const title = o => o.name || DEF[o.id].name;
 const key = o => o.y + (DEF[o.id].layer === 'tabletop' ? 1 : 0) - (DEF[o.id].layer === 'wall' ? 50 : 0) - (DEF[o.id].layer === 'floor' ? 90 : 0);
 
@@ -92,12 +93,18 @@ function draw() {
   layer.replaceChildren(...list.map(({ o, el }) => {
     if (el) return el;
     const e = document.createElementNS(NS, 'image'), { w, h } = size(o);
-    e.setAttribute('href', 'assets/furniture/' + DEF[o.id].file); e.setAttribute('width', w); e.setAttribute('height', h);
+    e.setAttribute('href', art(DEF[o.id])); e.setAttribute('width', w); e.setAttribute('height', h);
     e.setAttribute('transform', `translate(${(o.x + MX) * S} ${(o.y + MY) * S}) scale(${o.f || 1} 1) translate(${-w / 2} ${-h})`);
     e.setAttribute('class', 'it' + (o.url || isDev(o) ? ' bound' : '') + (o.uid === sel ? ' sel' : ''));
     e.dataset.u = o.uid; return e;
   }));
+  const c = view === 'edit' && sel && byId(sel); if (c && DEF[c.id].custom) layer.append(grip(c));
   drawTags();
+}
+function grip(o) {   // 私人家具右上角的缩放点
+  const { w, h } = size(o), g = document.createElementNS(NS, 'rect'), k = 1 / (svg.getScreenCTM()?.a || 1), r = 8 * k;
+  for (const [n, v] of Object.entries({ x: (o.x + MX) * S + w / 2 - r, y: (o.y + MY) * S - h - r, width: 2 * r, height: 2 * r, rx: 3 * k, class: 'grip', 'stroke-width': 2 * k })) g.setAttribute(n, v);
+  return g;
 }
 const byId = u => room.items.find(o => o.uid === u);
 
@@ -367,6 +374,7 @@ function dock() {
 let act = null;
 svg.addEventListener('pointerdown', e => {
   if (view === 'home' || e.button) return;
+  if (e.target.classList?.contains('grip')) { const o = byId(sel); act = { t: 'size', o, before: JSON.stringify(room), moved: false }; svg.setPointerCapture(e.pointerId); return; }
   const t = e.target.closest?.('.it'), o = t && byId(t.dataset.u);
   if (view === 'edit' && o) {
     const p = pt(e); select(o.uid); act = { t: 'move', o, dx: o.x - p.x / S, dy: o.y - p.y / S, before: JSON.stringify(room), moved: false };
@@ -375,6 +383,7 @@ svg.addEventListener('pointerdown', e => {
 });
 svg.addEventListener('pointermove', e => {
   if (!act) { const t = e.target.closest?.('.it.bound'); hoverU(view === 'room' && t ? t.dataset.u : null); return; }
+  if (act.t === 'size') { const d = DEF[act.o.id]; act.moved = true; act.o.w = +ACCT.clampW(2 * Math.abs(pt(e).x / S - MX - act.o.x), ...d.px).toFixed(3); draw(); sizeUI(); return; }
   if (act.t === 'pan') {
     if (!act.moved && Math.hypot(e.clientX - act.x, e.clientY - act.y) < 5) return;
     act.moved = true; const k = svg.getScreenCTM().a; V.x = act.vx - (e.clientX - act.x) / k; V.y = act.vy - (e.clientY - act.y) / k; look();
@@ -387,7 +396,7 @@ svg.addEventListener('pointermove', e => {
 const up = e => {
   const a = act; act = null; if (!a) return;
   if (a.t === 'pan' && !a.moved && e.type === 'pointerup') { if (view === 'edit') select(null); else if (a.u) tap(a.u); else { const p = pt(e); ME.walkTo(p.x / S - MX, p.y / S - MY); } }
-  if (a.t === 'move' && a.moved) { hist.push(a.before); state(); }
+  if ((a.t === 'move' || a.t === 'size') && a.moved) { hist.push(a.before); state(); }
 };
 svg.addEventListener('pointerup', up); svg.addEventListener('pointercancel', up);
 let hv = null; function hoverU(u) { if (hv === u) return; if (hv) hot(hv, false); hv = u; if (u) hot(u, true); }
@@ -401,13 +410,21 @@ function select(u) { sel = u; draw(); panel(); }
 function panel() {
   const o = sel && byId(sel); $('pObj').hidden = !o; $('pRoom').hidden = !!o;
   if (o) {
-    $('pImg').src = 'assets/furniture/' + DEF[o.id].file; $('pKind').textContent = DEF[o.id].name; $('pName').value = o.name || '';
+    $('pImg').src = art(DEF[o.id]); sizeUI(); $('pKind').textContent = DEF[o.id].name; $('pName').value = o.name || '';
     $('pName').placeholder = DEF[o.id].name; $('pUrl').value = o.url || ''; $('pOpen').value = o.open || 'embed'; $('pErr').textContent = ''; links();
   } else {
     swatch('rFloor', room.floors[$('rRoom').value] || skin(baseFill['f' + $('rRoom').value]), v => change(() => room.floors[$('rRoom').value] = v));
     swatch('rPaper', room.walls[$('rWall').value] || skin(baseFill['w' + $('rWall').value]), v => change(() => room.walls[$('rWall').value] = v));
   }
 }
+function sizeUI() {
+  const o = byId(sel), d = o && DEF[o.id]; $('pSizeBox').hidden = !d?.custom; if (!d?.custom) return;
+  const w = o.w || d.w, m = ACCT.maxW(...d.px); $('pSize').value = ACCT.SLIDE.to(w, m); $('pSizeT').textContent = ACCT.meters(w, ...d.px) + (w >= m - .005 ? '（已到最大）' : ''); $('pSize0').disabled = !o.w || o.w === d.w;
+}
+let sizeB = null;
+$('pSize').oninput = () => { const o = byId(sel), d = o && DEF[o.id]; if (!d) return; sizeB ||= JSON.stringify(room); o.w = +ACCT.clampW(ACCT.SLIDE.from(+$('pSize').value, ACCT.maxW(...d.px)), ...d.px).toFixed(3); draw(); sizeUI(); };
+$('pSize').onchange = () => { if (sizeB) { hist.push(sizeB); sizeB = null; state(); } };
+$('pSize0').onclick = () => { const o = byId(sel); change(() => { delete o.w; }); sizeUI(); };
 function links() { const o = byId(sel); $('pTest').disabled = $('pUnlink').disabled = !o?.url; }
 function swatch(id, now, f) {
   $(id).replaceChildren(...Object.entries(FLOORS).map(([k, n]) => {
@@ -430,23 +447,70 @@ $('pOpen').onchange = () => { const o = byId(sel); change(() => o.open = $('pOpe
 $('pTest').onclick = () => { const o = byId(sel); if (o?.url) window.open(o.url, '_blank', 'noopener'); };
 $('pUnlink').onclick = () => { const o = byId(sel); change(() => { delete o.url; }); panel(); };
 $('pFlip').onclick = () => { const o = byId(sel); change(() => o.f = -(o.f || 1)); };
-$('pCopy').onclick = () => { const o = byId(sel), n = { ...copy(o), uid: uid(), x: o.x + .4, y: o.y + .3 }; delete n.url; delete n.name; change(() => room.items.push(n)); select(n.uid); };
+$('pCopy').onclick = () => { if (full()) return; const o = byId(sel), n = { ...copy(o), uid: uid(), x: o.x + .4, y: o.y + .3 }; delete n.url; delete n.name; change(() => room.items.push(n)); select(n.uid); };
 function del() { const u = sel; sel = null; change(() => room.items = room.items.filter(o => o.uid !== u)); panel(); }
 $('pDel').onclick = del;
+let tab = 'all';
+const full = () => { if (room.items.length < 200) return false; toast('房间里最多放 200 件'); return true; };
+function put(id) { if (full()) return; const n = { uid: uid(), id, x: (V.x + FW / V.z / 2) / S - MX, y: (V.y + FH / V.z / 2) / S - MY, f: 1 }; change(() => room.items.push(n)); select(n.uid); }
+function addDef(f, theirs) {
+  const id = 'c' + f.id.replace(/-/g, ''); if (theirs && DEF[id] && !DEF[id].theirs) return id;
+  DEF[id] = { id, name: f.name, w: +f.w, px: [f.px_w, f.px_h], layer: f.layer, src: ACCT.src(f.path), path: f.path, fid: f.id, custom: true, theirs: !!theirs }; return id;
+}
+function mineLib() {
+  const me = ACCT.me, q = $('libQ').value.trim(), B = (t, l, f) => { const b = mk('button', 'mini', t); b.setAttribute('aria-label', l); b.onclick = f; return b; };
+  $('libGrid').replaceChildren(...me.furniture.filter(f => f.name.includes(q)).map(f => {
+    const c = mk('div', 'own'), b = mk('button'), m = mk('img'), id = addDef(f); m.src = ACCT.src(f.path); m.alt = ''; b.append(m, f.name); b.onclick = () => put(id);
+    const r = mk('div', 'ops'); r.append(B('修改', '修改' + f.name, () => ACCT.openEdit(f)), B('删除', '删除' + f.name, () => dropMine(f))); c.append(b, r); return c;
+  }));
+  if (!me.furniture.length) { const p = mk('p', 'hint', '还没有自己的家具。上传一张透明背景的 PNG 试试。'); p.style.gridColumn = '1/-1'; $('libGrid').append(p); }
+}
+function tabs() {
+  $('libTabs').hidden = !ACCT.me; if (!ACCT.me) { $('upBtn').hidden = true; return; } const n = ACCT.me.furniture.length, l = ACCT.me.limits.items;
+  $('tabMine').textContent = ACCT.me.role === 'pro' ? `我的 ${n}` : `我的 ${n}/${l}`; $('tabAll').setAttribute('aria-selected', tab === 'all'); $('tabMine').setAttribute('aria-selected', tab === 'mine'); $('upBtn').hidden = tab !== 'mine';
+}
+$('tabAll').onclick = () => { tab = 'all'; lib(); }; $('tabMine').onclick = () => { tab = 'mine'; lib(); }; $('upBtn').onclick = () => ACCT.openUp();
+async function dropMine(f) {
+  const id = 'c' + f.id.replace(/-/g, ''), n = room.items.filter(o => o.id === id).length;
+  if (await ask(`删除“${f.name}”？${n ? `房间里的 ${n} 件也会一起移走。` : ''}删除后不能撤销。`, '删除') !== 'yes') return;
+  try { await ACCT.remove(f); } catch (e) { return toast(ACCT.say(e)); }
+  const cut = r => { r.items = r.items.filter(o => o.id !== id); return r; };
+  if (byId(sel)?.id === id) sel = null; const was = saved.items.length; cut(room); cut(saved); hist = hist.map(h => JSON.stringify(cut(JSON.parse(h)))); if (own) cut(own); delete DEF[id];
+  draw(); panel(); state(); lib(); toast('已删除'); if (saved.items.length !== was) { NET.pushRoom(); cloud(saved); }
+}
 function lib() {
+  tabs(); if (ACCT.me && tab === 'mine') return mineLib();
   const q = $('libQ').value.trim();
   $('libGrid').replaceChildren(...K.items.filter(i => i.name.includes(q)).map(i => {
-    const b = mk('button'), m = mk('img'); m.src = 'assets/furniture/' + i.file; m.alt = ''; m.loading = 'lazy'; b.append(m, i.name);
-    b.onclick = () => { const n = { uid: uid(), id: i.id, x: (V.x + FW / V.z / 2) / S - MX, y: (V.y + FH / V.z / 2) / S - MY, f: 1 }; change(() => room.items.push(n)); select(n.uid); };
+    const b = mk('button'), m = mk('img'); m.src = art(i); m.alt = ''; m.loading = 'lazy'; b.append(m, i.name);
+    b.onclick = () => put(i.id);
     return b;
   }));
 }
 $('libQ').oninput = lib;
 $('undo').onclick = () => { if (!hist.length) return; room = JSON.parse(hist.pop()); if (!byId(sel)) sel = null; draw(); panel(); state(); };
 $('resetRoom').onclick = async () => { if (await ask('把家具、铺装和链接都恢复成默认？保存前可以撤销。', '恢复默认') === 'yes') { sel = null; change(() => room = { ...fresh(), v: 2, r: 2 }); panel(); } };
-function save() {
+/* 云端保存：先存本机，再传服务器；别的设备存过更新的就先问 */
+let rev = 0, sync = Promise.resolve();
+const CK = () => 'kairos-room-' + ACCT.me.id, cache = d => store(CK(), JSON.stringify({ room: saved, rev, dirty: d }));
+function cloud(r, force) { return sync = sync.then(() => cloud1(r, force)); }
+async function cloud1(r, force) {
+  if (!ACCT.me) return true; const id = ACCT.me.id; cache(true);
+  try {
+    const a = await ACCT.rpc('kairos_save', { p_room: r, p_rev: rev, p_force: !!force }); if (ACCT.me?.id !== id) return false;
+    if (a.ok) { rev = a.rev; cache(false); return true; }
+    const k = await ask('另一台设备保存过更新的布置。要用哪一份？', '用这台的', '用另一台的');
+    if (ACCT.me?.id !== id) return false;
+    if (k === 'yes') { rev = a.rev; return cloud1(r, true); }
+    if (k === 'mid') { rev = a.rev; swapRoom(safeRoom(a.room)); cache(false); return true; }
+    toast('还没保存到账号'); return false;
+  } catch (e) { toast('没存到账号：' + ACCT.say(e) + '。这台电脑上先留着'); return false; }
+}
+async function save() {
   document.activeElement?.blur?.();
   if (badUrl) { toast('链接有误，还没保存'); $('pUrl').focus(); return false; }
+  if (ACCT.guest()) { store('kairos-tour', JSON.stringify(room)); toast('逛逛时不能保存，注册后会带上现在的布置'); return false; }
+  if (ACCT.me) { saved = copy(room); hist = []; state(); NET.pushRoom(); if (!await cloud(copy(saved))) return false; toast('已保存到账号'); return true; }
   if (!store(KEY, JSON.stringify(room))) { toast('保存失败：浏览器不允许本地存储'); return false; }
   saved = copy(room); hist = []; state(); toast('已保存'); NET.pushRoom(); return true;
 }
@@ -454,9 +518,10 @@ $('saveEdit').onclick = save;
 async function quit() {
   document.activeElement?.blur?.();
   if (badUrl && !dirty()) badUrl = false;
+  if (ACCT.guest()) { if (dirty()) { saved = copy(room); store('kairos-tour', JSON.stringify(room)); toast('布置先留着，注册后会带进账号'); } badUrl = false; return go('room'); }
   if (dirty()) {
     const a = await ask('有未保存的改动。', '保存并退出', '不保存');
-    if (a === 'no') return; if (a === 'yes' && !save()) return; if (a === 'mid') room = copy(saved);
+    if (a === 'no') return; if (a === 'yes' && !await save() && (badUrl || !ACCT.me)) return; if (a === 'mid') room = copy(saved);
   }
   badUrl = false; go('room');
 }
@@ -476,7 +541,7 @@ let tt; function toast(s) { $('toast').textContent = s; $('toast').classList.add
 function go(v) {
   view = v; document.body.dataset.view = v; sel = null; hoverU(null);
   $('menu').hidden = true;
-  if (v === 'home') { V.z = 1; [...wins.values()].forEach(closeWin); if (NET.inRoom()) NET.leave(); $('homeNote').textContent = NET.urlRoom() ? '你打开的是共享房间的链接，进入后会看到正在房间里的人。' : '演示版：房间改动只保存在这台电脑的浏览器里。'; }
+  if (v === 'home') { V.z = 1; [...wins.values()].forEach(closeWin); if (NET.inRoom()) NET.leave(); $('homeNote').textContent = NET.urlRoom() ? '你打开的是共享房间的链接，进入后会看到正在房间里的人。' : '演示版：房间改动只保存在这台电脑的浏览器里。'; homeNote(); }
   if (v === 'edit') { hist = []; lib(); panel(); state(); }
   if (v === 'room') {   // 绑定改过或删掉的，关掉旧窗口
     [...wins.values()].forEach(n => { if (n.media) { if (n.u && !byId(n.u)) setMode(n, 'full'); return; } const o = byId(n.u); if (!o || o.url !== n.url || o.open === 'tab') closeWin(n); else { n.el.querySelector('header b').textContent = title(o); n.el.setAttribute('aria-label', title(o)); } });
@@ -484,8 +549,12 @@ function go(v) {
   }
   ME.view(v); draw(); requestAnimationFrame(look);
 }
+function homeNote() {
+  if (!ACCT.on || view !== 'home') return; const r = NET.urlRoom();
+  $('homeNote').textContent = !ACCT.me ? (r ? '朋友邀请你进房间，请先登录。联机需要高级账号。' : '逛逛可以试着布置，但不能保存、上传和联机。') : r && !ACCT.pro() ? '这是联机房间的邀请，需要高级账号。你可以先进自己的房间。' : r ? '你打开的是共享房间的链接，进入后会看到正在房间里的人。' : '房间保存在你的账号里。';
+}
 $('nick').value = load(NICK) || '';
-$('enter').onsubmit = e => { e.preventDefault(); const n = $('nick').value.trim(); store(NICK, n); ME.setName(n || '访客'); nick = n || '访客'; go('room'); NET.status(); const r = NET.urlRoom(); if (r) { ME.scatter(); NET.join(r); } };
+$('enter').onsubmit = e => { e.preventDefault(); const n = $('nick').value.trim(); store(NICK, n); ME.setName(n || '访客'); nick = n || '访客'; if (ACCT.guest()) return; ACCT.profile(n, ME.faceIdx()); go('room'); NET.status(); const r = NET.urlRoom(); if (r && ACCT.pro()) { ME.scatter(); NET.join(r); } };
 $('toHome').onclick = () => go('home');
 addEventListener('keydown', e => {
   if ($('ask').open || $('inv').open || /INPUT|SELECT/.test(e.target.tagName)) return;
@@ -504,9 +573,14 @@ let nick = '访客', own = null;
 const PAT = new Set(Object.keys(FLOORS)), num = (v, a, b) => Math.min(b, Math.max(a, +v || 0));
 function safeRoom(d) {
   const pick = (o, ok) => Object.fromEntries(Object.entries(o || {}).filter(([k, v]) => ok(k) && PAT.has(v)));
+  if (ACCT.on && Array.isArray(d?.defs)) d.defs.slice(0, 200).forEach(f => {   // 房主的私人家具：只认格式正确的图片路径
+    if (!f || !/^[0-9a-f-]{36}$/.test(f.id) || !/^[0-9a-f-]{36}\/[0-9a-f]{32}\.(png|webp)$/.test(f.path) || !['object', 'tabletop', 'wall', 'floor'].includes(f.layer)) return;
+    const pw = Math.round(num(f.px_w, 1, 1024)), ph = Math.round(num(f.px_h, 1, 1024)); addDef({ id: f.id, path: f.path, layer: f.layer, name: String(f.name ?? '').slice(0, 16) || '家具', px_w: pw, px_h: ph, w: ACCT.clampW(f.w, pw, ph) }, true);
+  });
   const ids = new Set();
   const items = (Array.isArray(d?.items) ? d.items : []).slice(0, 200).filter(o => o && DEF[o.id] && /^[\w]{1,24}$/.test(o.uid) && !ids.has(o.uid) && ids.add(o.uid)).map(o => {
     const n = { uid: o.uid, id: o.id, x: num(o.x, -1, 15), y: num(o.y, -2, 9), f: o.f === -1 ? -1 : 1 };
+    if (DEF[o.id].custom && o.w != null) n.w = ACCT.clampW(o.w, ...DEF[o.id].px);
     if (typeof o.name === 'string' && o.name) n.name = o.name.slice(0, 16);
     if (typeof o.url === 'string') { const u = normUrl(o.url.slice(0, 2000)); if (u.url) { n.url = u.url; n.open = o.open === 'tab' ? 'tab' : 'embed'; } }
     return n;
@@ -519,7 +593,8 @@ NET.init({
   screen: (x, y) => screenAt(x, y), itemName: u => { const o = byId(u); return o?.url ? title(o) : ''; },
   alreadyWith: (id, p) => [...wins.values()].some(n => n.with === id && (p.media ? n.media && n.mode === 'full' : n.u === p.using?.u)),
   mediaLive,
-  roomData: () => ({ items: saved.items, floors: saved.floors, walls: saved.walls }),
+  roomData: () => ({ items: saved.items, floors: saved.floors, walls: saved.walls, defs: [...new Set(saved.items.map(o => o.id))].map(i => DEF[i]).filter(d => d?.custom).map(d => ({ id: d.fid, path: d.path, layer: d.layer, name: d.name, px_w: d.px[0], px_h: d.px[1], w: d.w })) }),
+  canOnline: () => ACCT.pro(),
   applyRoom: d => swapRoom(safeRoom(d)),
   roleChanged: mine => { $('toEdit').hidden = !mine; if (!mine && !own) { own = copy(room); swapRoom({ ...fresh(), v: 2, r: 2 }); } else if (mine && own) { const o = own; own = null; swapRoom(o); } },
   mediaEnded: id => { const w = wins.get('m:' + id); if (w) { closeWin(w); toast(`${w.name}结束了`); } },
@@ -534,4 +609,29 @@ window.ME.init({
     V.x = Math.min(px - w * .28, Math.max(px - w * .72, V.x)); V.y = Math.min(py - h * .3, Math.max(py - h * .7, V.y)); if (a !== V.x || c !== V.y) look(); },
 });
 go('home');
+
+/* ---------- 账号 ---------- */
+const OWN = 'kairos-owner', MARK = 'kairos-uid', wipe = k => { try { localStorage.removeItem(k); } catch {} };
+let toured = false, tour0 = '';
+ACCT.init({
+  toast, homeNote, browse() { nick = '访客'; ME.setName('先逛逛'); toured = true; tour0 ||= JSON.stringify(room); go('room'); NET.status(); $('meChip').textContent = '先逛逛 · 注册后可保存'; if (NET.urlRoom()) toast('这是联机房间的邀请，登录高级账号才能进；先带你看默认房间'); }, canLeave: async () => view !== 'edit' || !dirty() || await ask('有未保存的改动，退出登录会丢掉。', '退出登录') === 'yes',
+  async login(me) {
+    me.furniture.forEach(f => addDef(f)); const first = !load(MARK); let legacy = toured && JSON.stringify(room) !== tour0 ? copy(room) : null; toured = false; try { const t = JSON.parse(load('kairos-tour')); if (!legacy && t?.items) legacy = t; } catch {} wipe('kairos-tour');
+    if (first && load(KEY)) legacy = copy(room);   // 这台电脑上没账号时布置过的房间，带进新账号
+    rev = me.rev; let r = me.room ? safeRoom(me.room) : legacy ? safeRoom(legacy) : { ...fresh(), v: 2, r: 2 };
+    let c = null; try { c = JSON.parse(load('kairos-room-' + me.id)); } catch {}
+    let push = !me.room && !!legacy;
+    if (c?.dirty && c.room) {   // 上次断网没传上去的
+      if (c.rev === me.rev) { r = safeRoom(c.room); push = true; }
+      else { const k = await ask('这台电脑上有一份没传到账号的布置，另一台设备也保存过。要用哪一份？', '用这台的', '用另一台的'); if (k === 'yes') { r = safeRoom(c.room); push = true; } }
+    }
+    room = r; saved = copy(r); hist = []; own = null; sel = null; tab = 'all'; draw();
+    let key = me.owner_key; if (!key && first) { try { const k = JSON.parse(load(OWN)); if (k?.id && k.jwk) key = await ACCT.rpc('kairos_owner', { p_key: k }); } catch {} }
+    if (key) store(OWN, JSON.stringify(key)); else wipe(OWN);
+    store(MARK, me.id); $('nick').value = me.nick || load(NICK) || ''; if (me.nick || me.face) ME.setFace(me.face);
+    if (push) await cloud(copy(saved)); else cache(false);
+  },
+  logout() { wipe('kairos-tour'); if (view !== 'home') { saved = copy(room); go('home'); } wipe(OWN); wipe(NICK); $('nick').value = ''; K.items.length && Object.keys(DEF).forEach(k => DEF[k].custom && delete DEF[k]); room = { ...fresh(), v: 2, r: 2 }; saved = copy(room); hist = []; own = null; tour0 = ''; draw(); },
+  furniture(f, isNew) { const id = addDef(f); lib(); draw(); if (isNew) { tab = 'mine'; lib(); put(id); toast('已放进我的家具，拖动可换位置'); } else { panel(); toast('已修改'); if (saved.items.some(o => o.id === id)) NET.pushRoom(); } },
+});
 })();

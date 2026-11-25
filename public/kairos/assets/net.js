@@ -9,7 +9,7 @@ const STUN = ICE; let iceEnd = 0;
 async function ice() {
   if (Date.now() < iceEnd || location.protocol === 'file:') return;
   try {
-    const r = await fetch('/api/kairos-turn', { method: 'POST', signal: AbortSignal.timeout(5000) }); if (!r.ok) throw 0;
+    const r = await fetch('/api/kairos-turn', { method: 'POST', headers: ACCT.token ? { Authorization: 'Bearer ' + ACCT.token } : {}, signal: AbortSignal.timeout(5000) }); if (!r.ok) throw 0;
     const d = await r.json(); ICE = [...STUN, ...d.iceServers]; iceEnd = Date.now() + d.ttl * 500;
   } catch { iceEnd = Date.now() + 30e3; }
 }
@@ -33,6 +33,10 @@ async function loadOwner(id) {
 }
 async function makeOwner() {
   const p = await crypto.subtle.generateKey(ALG, true, ['sign', 'verify']), jwk = await crypto.subtle.exportKey('jwk', p.privateKey), id = await fp(jwk);
+  if (ACCT.me) {   // 房主身份存进账号，换设备还是同一个房间号
+    const k = await ACCT.rpc('kairos_owner', { p_key: { id, jwk } }); try { localStorage.setItem(OWN, JSON.stringify(k)); } catch {}
+    return { id: k.id, pub: { x: k.jwk.x, y: k.jwk.y }, key: await crypto.subtle.importKey('jwk', k.jwk, ALG, false, ['sign']) };
+  }
   try { localStorage.setItem(OWN, JSON.stringify({ id, jwk })); } catch {}
   return { id, pub: { x: jwk.x, y: jwk.y }, key: p.privateKey };
 }
@@ -86,14 +90,16 @@ async function gotRoom(m) {
 
 /* ---------- 进出房间 ---------- */
 let libP = null;
-const lib = () => libP ||= new Promise((ok, no) => { const s = mk('script'); s.src = 'assets/supabase.js?v=11251546'; s.onload = ok; s.onerror = () => { libP = null; no(); }; document.head.append(s); });
+const lib = () => window.supabase ? Promise.resolve() : libP ||= new Promise((ok, no) => { const s = mk('script'); s.src = 'assets/supabase.js?v=11252016'; s.onload = ok; s.onerror = () => { libP = null; no(); }; document.head.append(s); });
 async function join(id) {
+  if (!api.canOnline()) return api.toast('联机需要高级账号');
   const my = ++token; rid = id; rev = 0; tries = 0; status('正在连接…');
   try { await lib(); } catch { status('联机组件没加载出来，刷新重试'); return; }
   await ice(); owner = await loadOwner(id); if (my !== token) return;
   document.body.classList.toggle('guest', !owner); api.roleChanged(!!owner);
+  const priv = !!cfg.account?.private; if (priv) { sb = ACCT.client; await sb.realtime.setAuth(ACCT.token); if (my !== token) return; }
   me = crypto.randomUUID(); sb ||= window.supabase.createClient(cfg.url, cfg.key, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } });
-  const c = ch = sb.channel('kairos-' + id, { config: { broadcast: { self: false }, presence: { key: me } } });
+  const c = ch = sb.channel('kairos-' + id, { config: { private: priv, broadcast: { self: false }, presence: { key: me } } });
   let first = true;
   const sync = () => {
     if (c !== ch) return;
@@ -118,8 +124,9 @@ function leave() {
 async function invite() {
   if (location.protocol === 'file:') return api.toast('联机要从线上网址打开');
   if (!cfg.url) return api.toast('还没有配置联机服务');
+  if (!api.canOnline()) return api.toast('联机需要高级账号，普通账号可以布置自己的房间');
   if (!rid) {
-    owner = await loadOwner() || await makeOwner();
+    try { owner = await loadOwner() || await makeOwner(); } catch (e) { return api.toast(ACCT.say(e)); }
     const u = new URL(location.href); u.searchParams.set('room', owner.id); history.replaceState(null, '', u); join(owner.id);
   }
   $('invLink').value = location.href.split('#')[0]; $('inv').showModal(); $('invLink').select();

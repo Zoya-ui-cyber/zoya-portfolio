@@ -1,2 +1,5 @@
-// 只含浏览器可公开的密钥。turn 留空 = 不用中转；以后加：[{ urls: 'turn:…', username: '…', credential: '…' }]
-window.KAIROS_NET = { url: 'https://qcrrrgzhucidypwubdnx.supabase.co', key: 'sb_publishable_oFSzpWDhn0bNcWjv8dK_wA_eBwddNmX', turn: [] };
+// 只含浏览器可公开的密钥。中转凭证由 /api/kairos-turn 临时签发。
+window.KAIROS_NET = {
+  url: 'https://hbensgmxvljgwlahvshp.supabase.co', key: 'sb_publishable_m0Z1tO6OcU-RAOklaXRapw_2J-wiyns', turn: [],
+  account: { url: 'https://hbensgmxvljgwlahvshp.supabase.co', key: 'sb_publishable_m0Z1tO6OcU-RAOklaXRapw_2J-wiyns', private: true },
+};

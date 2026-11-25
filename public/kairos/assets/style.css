@@ -128,3 +128,23 @@ dialog{border:2px solid var(--ink);border-radius:12px;background:var(--white);co
 #menu button{text-align:left;background:none;border:0;border-radius:8px;padding:6px 10px;cursor:pointer}
 #menu button:hover,#menu button:focus-visible{background:#FBE6BF}#menu button:disabled{opacity:.55;cursor:default}
 #menu small{display:block;color:var(--soft);font-size:13px;max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* 账号与私人家具 */
+#auth{margin-top:24px;display:grid;gap:8px;justify-items:start}#auth>div:not(.row){width:100%}#auth .big{margin-top:4px}#auMsg:empty{display:none}
+.link{background:none;border:0;padding:4px 0;color:var(--orange);cursor:pointer;text-decoration:underline;text-underline-offset:3px}#auth .row{gap:18px}
+#acct{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:18px 0 -8px;font-size:14px}#acMail{max-width:220px;overflow:hidden;text-overflow:ellipsis}#acRole{background:#FBE6BF;border-radius:8px;padding:0 9px;font-weight:400}#acRole.pro{background:var(--green);color:#fff}
+.tabs{display:grid;grid-template-columns:1fr 1fr;border:2px solid var(--ink);border-radius:9px;overflow:hidden;margin-bottom:10px}.tabs button{border:0;background:var(--white);padding:5px 2px;cursor:pointer}.tabs button[aria-selected=true]{background:var(--yellow)}
+#upBtn{width:100%;margin-bottom:10px}
+#libGrid .own{display:grid}#libGrid .ops{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:4px}#libGrid .mini{padding:1px 0;font-size:12px;border-radius:6px}
+#libGrid button{overflow-wrap:anywhere}
+.grip{fill:var(--yellow);stroke:var(--ink);cursor:nesw-resize}
+#pSizeBox{margin-bottom:12px}#pSizeBox .hint{margin:2px 0 8px}input[type=range]{padding:0;border:0;background:none;accent-color:var(--orange);height:28px}
+#up{width:min(820px,94vw);max-height:94vh;overflow:auto}#up h2{margin:0 0 12px;font-size:24px}#upDrop{border:2px dashed var(--soft);border-radius:12px;padding:36px 20px;text-align:center}#upDrop.over{background:#FBE6BF}#upDrop p{margin:0 0 12px}#upDrop .hint{margin:14px auto 0;max-width:430px}
+#upForm:not([hidden]){display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:20px}
+#upStage{position:relative;aspect-ratio:6.6/5.6;background:linear-gradient(#FFF1D6 0 34%,#F2D9A6 34%);border:2px solid var(--ink);border-radius:10px;overflow:hidden;align-self:start}
+#upStage .cap{position:absolute;left:10px;top:6px;font-size:12px;color:var(--soft);z-index:4}#upStage .ref{position:absolute;opacity:.75;z-index:2}#upStage .sofa{width:29.3%;left:6%;bottom:22%}#upStage .plant{width:12.9%;left:38%;bottom:30%}
+#upItem{position:absolute;outline:2px dashed var(--orange2);outline-offset:1px}#upItem img{width:100%;height:100%;display:block}#upItem i{position:absolute;right:-9px;top:-9px;width:18px;height:18px;background:var(--yellow);border:2px solid var(--ink);border-radius:4px;cursor:nesw-resize;touch-action:none}
+#up .side{display:grid;gap:6px;align-content:start}#up label,.lab2{font-size:13px;color:var(--soft)}#up label input{color:var(--ink);font-size:15px;margin-top:3px}.lab2{margin-top:6px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}.chip{background:var(--paper);border:1.5px solid var(--line);border-radius:8px;padding:3px 10px;cursor:pointer}.chip[aria-pressed=true]{background:var(--yellow);border-color:var(--ink)}
+#up .hint{margin:0}.warnT{font-size:13px;color:#8A4B00;margin:0}.warnT:empty{display:none}#up .link{justify-self:start;font-size:14px}.row.end{justify-content:flex-end;margin-top:14px}#upErr{margin-top:10px}
+@media(max-width:700px){#upForm:not([hidden]){grid-template-columns:1fr}}

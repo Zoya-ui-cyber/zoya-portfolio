@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>共此刻 管理页</title><link rel="stylesheet" href="assets/style.css?v=11252016">
+<style>html,body{overflow:auto;height:auto}main{max-width:1080px;margin:auto;padding:26px 20px 60px}h1{font-size:32px;margin:0}h2{font-size:23px;margin:34px 0 12px}.top{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.use{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:26px 34px}.use b{font-size:20px;white-space:nowrap;font-weight:600;font-variant-numeric:tabular-nums}.use p{margin:2px 0 8px}.barx{height:12px;border:2px solid var(--ink);border-radius:8px;overflow:hidden;background:var(--white)}.barx i{display:block;height:100%;background:var(--green)}.barx.mid i{background:var(--yellow)}.barx.hi i{background:var(--orange)}
+.scroll{overflow-x:auto;border:2px solid var(--ink);border-radius:10px;background:var(--white)}table{border-collapse:collapse;width:100%}th,td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap;font-size:14px}th{background:#FBE6BF}tr:last-child td{border:0}
+.tools{display:flex;gap:10px;margin-bottom:10px;align-items:center;flex-wrap:wrap}.tools input{max-width:280px}.pics{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}.pics figure{margin:0;border:1.5px solid var(--line);border-radius:10px;padding:10px;background:var(--white)}.pics img{width:100%;height:96px;object-fit:contain;display:block}.pics figcaption{font-size:13px;margin:6px 0;overflow:hidden;text-overflow:ellipsis}.small{font-size:13px;color:var(--soft)}td .btn,.pics .btn{padding:2px 10px;font-size:13px}</style></head>
+<body><main>
+<div class="top"><h1>共此刻 管理页</h1><span class="grow"></span><span id="who" class="small"></span><button class="btn" id="reload">刷新</button></div>
+<p id="msg" role="status">正在检查权限…</p>
+<div id="all" hidden>
+<h2>用量</h2><div class="use" id="use"></div><p class="small" id="useNote"></p>
+<h2>账号</h2><div class="tools"><input id="find" type="search" placeholder="搜邮箱或昵称" aria-label="搜邮箱或昵称"><button class="btn" id="uPrev">上一页</button><button class="btn" id="uNext">下一页</button></div>
+<div class="scroll"><table><thead><tr><th>邮箱</th><th>昵称</th><th>身份</th><th>家具</th><th>注册</th><th>上次保存</th><th></th></tr></thead><tbody id="users"></tbody></table></div>
+<h2>上传的图片</h2><div class="tools"><span id="picWho" class="small">全部，最新在前</span><button class="btn" id="picAll" hidden>看全部</button><button class="btn" id="pPrev">上一页</button><button class="btn" id="pNext">下一页</button></div><div class="pics" id="pics"></div>
+</div></main>
+<div id="toast" role="status"></div>
+<script src="assets/supabase.js?v=11252016"></script><script src="assets/net-config.js?v=11252016"></script>
+<script>
+(async () => {
+const $ = id => document.getElementById(id), cfg = window.KAIROS_NET?.account, mk = (t, x, c) => { const e = document.createElement(t); if (x != null) e.textContent = x; if (c) e.className = c; return e; };
+if (!cfg?.url) return $('msg').textContent = '还没有配置账号服务。';
+const sb = supabase.createClient(cfg.url, cfg.key, { auth: { storageKey: 'kairos-auth' } });
+const toast = s => { $('toast').textContent = s; $('toast').classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => $('toast').classList.remove('on'), 2600); };
+const rpc = async (f, a) => { const { data, error } = await sb.rpc(f, a); if (error) throw error; return data; };
+const size = b => b >= 1e9 ? (b / 1e9).toFixed(1) + ' GB' : b >= 1e6 ? (b / 1e6).toFixed(1) + ' MB' : Math.round(b / 1e3) + ' KB', day = s => s ? new Date(s).toLocaleDateString('zh-CN') : '—';
+const btn = (t, f) => { const b = mk('button', t, 'btn'); b.onclick = async () => { b.disabled = true; try { await f(); } catch (e) { toast('没成功：' + (e.message || '请重试')); } b.disabled = false; }; return b; };
+let up = 0, pp = 0, owner = null;
+function meter(name, now, max, text) { const d = mk('div'), p = mk('p', name), b = mk('b', text), m = mk('div', null, 'barx'), i = mk('i'), k = Math.min(1, now / max); i.style.width = k * 100 + '%'; if (k >= .8) m.classList.add('hi'); else if (k >= .5) m.classList.add('mid'); m.append(i); const t = mk('p', Math.round(now / max * 100) + '%', 'small'); d.append(p, b, m, t); return d; }
+async function usage() {
+  const o = await rpc('kairos_admin_overview'), l = o.limits, list = [meter('账号（高级 ' + o.pro + ' 个）', o.users, l.site_users, `${o.users} / ${l.site_users}`), meter('家具图片（' + o.furniture + ' 件）', o.bytes, l.site_bytes, `${size(o.bytes)} / ${size(l.site_bytes)}`), meter('数据库', o.db, 5e8, `${size(o.db)} / 500 MB`)];
+  let note = '';
+  try { const { data } = await sb.auth.getSession(), r = await fetch('/api/kairos-usage', { headers: { Authorization: 'Bearer ' + data.session.access_token } }), u = await r.json(); if (!u.ok) throw 0; list.unshift(meter('中转流量，' + u.month, u.bytes, u.limit, `${size(u.bytes)} / ${size(u.limit)}`)); note = `中转到 50%、80%、95% 会发邮件；到 ${Math.round(u.stopAt / u.limit * 100)}% 自动停发，避免产生费用。` + (u.demo ? '（本机试用显示的是示例数字）' : ''); }
+  catch { const d = mk('div'); d.append(mk('p', '中转流量'), mk('b', '暂时查不到')); list.unshift(d); note = '中转用量要配好 Cloudflare 查询密钥才会显示。'; }
+  $('use').replaceChildren(...list); $('useNote').textContent = note;
+}
+async function users() {
+  const l = await rpc('kairos_admin_users', { p_find: $('find').value.trim(), p_page: up }); $('uPrev').disabled = !up; $('uNext').disabled = l.length < 50;
+  $('users').replaceChildren(...l.map(u => {
+    const tr = mk('tr'), c = mk('td'); [u.email, u.nick || '—', (u.role === 'pro' ? '高级' : '普通') + (u.is_admin ? '，管理员' : ''), `${u.items} 件，${size(u.bytes)}`, day(u.created_at), day(u.saved_at)].forEach(x => tr.append(mk('td', x)));
+    const pro = u.role === 'pro';
+    c.append(btn(pro ? '改为普通' : '升级高级', async () => { if (pro && !confirm(`把 ${u.email} 改为普通账号？之后不能再进联机房间。`)) return; await rpc('kairos_admin_role', { p_id: u.id, p_role: pro ? 'basic' : 'pro' }); toast('已修改，对方重新登录或刷新后生效'); await Promise.all([users(), usage()]); }), ' ', btn('看图片', async () => { owner = u; pp = 0; await pics(); $('pics').scrollIntoView({ behavior: 'smooth' }); }));
+    tr.append(c); return tr;
+  })); if (!l.length) { const tr = mk('tr'), td = mk('td', '没有找到'); td.colSpan = 7; tr.append(td); $('users').append(tr); }
+}
+async function pics() {
+  const l = await rpc('kairos_admin_furniture', { p_owner: owner?.id ?? null, p_page: pp }); $('picWho').textContent = owner ? owner.email + ' 的图片' : '全部，最新在前'; $('picAll').hidden = !owner; $('pPrev').disabled = !pp; $('pNext').disabled = l.length < 60;
+  $('pics').replaceChildren(...l.map(f => { const g = mk('figure'), m = mk('img'); m.src = `${cfg.url}/storage/v1/object/public/kairos-furniture/${f.path}`; m.alt = f.name; m.loading = 'lazy'; g.append(m, mk('figcaption', `${f.name}，${size(f.bytes)}`), mk('p', f.email, 'small'), btn('删除', async () => { if (!confirm(`删除“${f.name}”？对方房间里的也会消失，不能撤销。`)) return; const { error } = await sb.storage.from('kairos-furniture').remove([f.path]); if (error) throw error; await rpc('kairos_admin_delete', { p_id: f.id }); toast('已删除'); await Promise.all([pics(), usage()]); })); return g; }));
+  if (!l.length) $('pics').append(mk('p', '还没有上传的图片', 'small'));
+}
+async function load() {
+  const { data } = await sb.auth.getSession(); if (!data.session) return $('msg').textContent = '请先在共此刻首页登录管理员账号，再刷新这页。';
+  $('who').textContent = data.session.user.email;
+  try { if (await rpc('kairos_is_admin') !== true) return $('msg').textContent = '这个账号不是管理员。'; $('msg').hidden = true; $('all').hidden = false; await Promise.all([usage(), users(), pics()]); } catch { $('msg').hidden = false; $('msg').textContent = '加载失败，请检查网络后刷新。'; }
+}
+const safe = f => f().catch(() => toast('加载失败，请重试'));
+$('reload').onclick = load; let t; $('find').oninput = () => { clearTimeout(t); t = setTimeout(() => { up = 0; safe(users); }, 300); };
+$('uPrev').onclick = () => { up--; safe(users); }; $('uNext').onclick = () => { up++; safe(users); }; $('pPrev').onclick = () => { pp--; safe(pics); }; $('pNext').onclick = () => { pp++; safe(pics); }; $('picAll').onclick = () => { owner = null; pp = 0; safe(pics); };
+load();
+})();
+</script></body></html>
