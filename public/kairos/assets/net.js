@@ -3,7 +3,16 @@ window.NET = (() => {
 'use strict';
 const $ = id => document.getElementById(id), MAX = 4, OWN = 'kairos-owner';
 const cfg = window.KAIROS_NET || {};
-const ICE = [{ urls: ['stun:stun.cloudflare.com:3478', 'stun:stun.miwifi.com:3478', 'stun:stun.l.google.com:19302'] }, ...(cfg.turn || [])];
+let ICE = [{ urls: ['stun:stun.cloudflare.com:3478', 'stun:stun.miwifi.com:3478', 'stun:stun.l.google.com:19302'] }, ...(cfg.turn || [])];
+const STUN = ICE; let iceEnd = 0;
+/* 中转：向作品集后端要临时通行证；要不到就只用直连 */
+async function ice() {
+  if (Date.now() < iceEnd || location.protocol === 'file:') return;
+  try {
+    const r = await fetch('/api/kairos-turn', { method: 'POST', signal: AbortSignal.timeout(5000) }); if (!r.ok) throw 0;
+    const d = await r.json(); ICE = [...STUN, ...d.iceServers]; iceEnd = Date.now() + d.ttl * 500;
+  } catch { iceEnd = Date.now() + 30e3; }
+}
 const mk = (t, c, x) => { const e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; };
 const b64 = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 const un64 = s => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
@@ -77,11 +86,11 @@ async function gotRoom(m) {
 
 /* ---------- 进出房间 ---------- */
 let libP = null;
-const lib = () => libP ||= new Promise((ok, no) => { const s = mk('script'); s.src = 'assets/supabase.js?v=11232202'; s.onload = ok; s.onerror = () => { libP = null; no(); }; document.head.append(s); });
+const lib = () => libP ||= new Promise((ok, no) => { const s = mk('script'); s.src = 'assets/supabase.js?v=11251506'; s.onload = ok; s.onerror = () => { libP = null; no(); }; document.head.append(s); });
 async function join(id) {
   const my = ++token; rid = id; rev = 0; tries = 0; status('正在连接…');
   try { await lib(); } catch { status('联机组件没加载出来，刷新重试'); return; }
-  owner = await loadOwner(id); if (my !== token) return;
+  await ice(); owner = await loadOwner(id); if (my !== token) return;
   document.body.classList.toggle('guest', !owner); api.roleChanged(!!owner);
   me = crypto.randomUUID(); sb ||= window.supabase.createClient(cfg.url, cfg.key, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } });
   const c = ch = sb.channel('kairos-' + id, { config: { broadcast: { self: false }, presence: { key: me } } });
@@ -131,7 +140,7 @@ function addPeer(id) {
   b.onclick = () => p.media ? api.watchMedia(p) : p.using && api.joinUse(p.using.u, p.id, p.name);
   rtc(p); paint(p); api.peersChanged(); setTimeout(() => { if (peers.get(id) === p) { state(id); if (owner) pushRoom(id); } }, 900);
 }
-function drop(id) { const p = peers.get(id); if (!p) return; clearTimeout(p.bye); clearTimeout(p.retry); peers.delete(id); p.pc?.close(); p.el.remove(); api.dock(); api.mediaEnded(id); api.partnerMoved(id, p.name, []); api.peersChanged(); status(); }
+function drop(id) { const p = peers.get(id); if (!p) return; clearTimeout(p.bye); clearTimeout(p.retry); clearTimeout(p.dog); peers.delete(id); p.pc?.close(); p.el.remove(); api.dock(); api.mediaEnded(id); api.partnerMoved(id, p.name, []); api.peersChanged(); status(); fixUI(); }
 function paint(p) {
   p.f.innerHTML = ME.faceSvg(p.face); const live = p.cam && p.on; p.v.hidden = !live; p.f.hidden = live;
   const it = p.using && api.itemName(p.using.u);
@@ -157,32 +166,50 @@ function rtc(p) {
   pc.onicecandidate = e => e.candidate && send('rtc', { c: e.candidate.toJSON() }, p.id);
   pc.ontrack = e => {
     const i = pc.getTransceivers().indexOf(e.transceiver);
-    if (i === 0) { p.a.srcObject = new MediaStream([e.track]); p.a.play().catch(() => {}); }
+    if (i === 0) { p.a.srcObject = new MediaStream([e.track]); hear(p); }
     else if (i === 1) { p.stream.addTrack(e.track); p.v.srcObject = p.stream; p.v.play().catch(() => {}); }
     else { p.show.addTrack(e.track); if (p.media) api.mediaLive(p); }
   };
   pc.onconnectionstatechange = () => {
     if (pc !== p.pc) return; const s = pc.connectionState; p.on = s === 'connected';
     if (s === 'connected') { p.fails = 0; kind(p); api.peersChanged(); stateSoon(); }
-    if (s === 'disconnected') p.link = '重连中';
-    if (s === 'failed') { p.link = '视频连不通'; p.fails = (p.fails || 0) + 1; if (p.offerer && p.fails < 4) p.retry = setTimeout(() => offer(p, true), 1500 * p.fails); }
-    paint(p);
+    if (s === 'disconnected') { p.link = '重连中'; again(p, 5000); }
+    if (s === 'failed') { p.link = '视频连不通，重试中'; again(p); }
+    paint(p); fixUI();
   };
+  again(p, 15000);
   if (p.offerer) { ['audio', 'video', 'audio', 'video'].forEach(k => pc.addTransceiver(k, { direction: 'sendrecv' })); feed(p); p.retry = setTimeout(() => offer(p), 700); }
 }
+/* 没连上就一直重试，间隔逐渐拉长到 15 秒 */
+function again(p, ms) {
+  const pc = p.pc; clearTimeout(p.dog);
+  p.dog = setTimeout(async () => {
+    if (pc !== p.pc || !peers.has(p.id) || p.on) return;
+    p.fails = (p.fails || 0) + 1; p.link = '视频连不通，重试中'; paint(p); fixUI(); await ice(); await redo(p).catch(e => console.warn('rtc', e)); if (peers.has(p.id) && !p.on) again(p, 15000);
+  }, ms ?? Math.min(15000, 1500 * ((p.fails || 0) + 1)));
+}
+async function redo(p) {
+  if (p.pc.signalingState === 'closed') return; p.pc.setConfiguration({ iceServers: ICE, bundlePolicy: 'max-bundle' });
+  if (p.offerer) await offer(p, true); else send('rtc', { again: 1 }, p.id);
+}
+/* 浏览器拦住声音或连不上时，给一个能点的恢复按钮 */
+function hear(p) { p.a.play().then(() => { p.mute = false; fixUI(); }, e => { if (e.name === 'NotAllowedError') { p.mute = true; fixUI(); } }); }
+function fixUI() { const l = [...peers.values()], b = $('fixBtn'), m = l.some(p => p.mute), f = l.some(p => !p.on && p.fails); b.hidden = !m && !f; b.textContent = m ? '没有声音，点这里恢复' : '重新连接'; }
+async function fix() { $('fixBtn').disabled = true; for (const p of [...peers.values()]) { if (p.mute) hear(p); if (!p.on) await ice().then(() => redo(p)).catch(() => {}); } setTimeout(() => { $('fixBtn').disabled = false; fixUI(); }, 2500); }
 async function offer(p, restart) {
   const pc = p.pc; if (pc.signalingState !== 'stable' && !(restart && pc.signalingState === 'have-local-offer')) return;
-  await pc.setLocalDescription(await pc.createOffer({ iceRestart: !!restart })); send('rtc', { d: pc.localDescription.toJSON() }, p.id);
-  clearTimeout(p.retry); p.retry = setTimeout(() => { if (!p.on && pc === p.pc && pc.signalingState === 'have-local-offer') send('rtc', { d: pc.localDescription.toJSON() }, p.id); }, 4000);
+  await pc.setLocalDescription(await pc.createOffer({ iceRestart: !!restart })); p.seq = (p.seq || 0) + 1; send('rtc', { d: pc.localDescription.toJSON(), n: p.seq }, p.id);
+  clearTimeout(p.retry); p.retry = setTimeout(() => { if (!p.on && pc === p.pc && pc.signalingState === 'have-local-offer') send('rtc', { d: pc.localDescription.toJSON(), n: p.seq }, p.id); }, 4000);
 }
 async function gotRtc(p, m) {
   const pc = p.pc;
+  if (m.again) { if (p.offerer && !p.on) await redo(p); return; }
   if (m.d) {
     if (m.d.type === 'offer') {
       if (p.offerer) return;
       await pc.setRemoteDescription(m.d); pc.getTransceivers().forEach(t => { t.direction = 'sendrecv'; }); feed(p);
-      await pc.setLocalDescription(); send('rtc', { d: pc.localDescription.toJSON() }, p.id);
-    } else { if (pc.signalingState !== 'have-local-offer') return; await pc.setRemoteDescription(m.d); }
+      await pc.setLocalDescription(); send('rtc', { d: pc.localDescription.toJSON(), n: m.n }, p.id);
+    } else { if (pc.signalingState !== 'have-local-offer' || (m.n != null && m.n !== p.seq)) return; await pc.setRemoteDescription(m.d); }
     for (const c of p.cand.splice(0)) await pc.addIceCandidate(c).catch(() => {});
   } else if (m.c) { if (pc.remoteDescription) await pc.addIceCandidate(m.c).catch(() => {}); else p.cand.push(m.c); }
 }
@@ -220,7 +247,7 @@ function init(a) {
   api = a; ME.hooks.move = p => { if (admitted && peers.size && performance.now() - (init.t || 0) > 90) { init.t = performance.now(); fast('pos', { x: +p.x.toFixed(2), y: +p.y.toFixed(2) }); } };
   ME.hooks.stop = p => { if (admitted && peers.size) { fast('pos', p); send('pos', p); } };
   ME.hooks.cam = () => { feedAll(); stateSoon(); }; ME.hooks.face = stateSoon;
-  $('micBtn').onclick = () => mic ? micOff() : micOn(); $('inviteBtn').onclick = invite;
+  $('micBtn').onclick = () => mic ? micOff() : micOn(); $('inviteBtn').onclick = invite; $('fixBtn').onclick = fix;
   $('invCopy').onclick = async () => { try { await navigator.clipboard.writeText($('invLink').value); } catch { $('invLink').select(); document.execCommand('copy'); } $('invCopy').textContent = '已复制'; setTimeout(() => $('invCopy').textContent = '复制链接', 1800); };
   $('invClose').onclick = () => $('inv').close(); addEventListener('pagehide', () => { if (ch) leave(); });
 }
