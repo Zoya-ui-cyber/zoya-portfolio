@@ -86,7 +86,7 @@ async function gotRoom(m) {
 
 /* ---------- 进出房间 ---------- */
 let libP = null;
-const lib = () => libP ||= new Promise((ok, no) => { const s = mk('script'); s.src = 'assets/supabase.js?v=11251506'; s.onload = ok; s.onerror = () => { libP = null; no(); }; document.head.append(s); });
+const lib = () => libP ||= new Promise((ok, no) => { const s = mk('script'); s.src = 'assets/supabase.js?v=11251546'; s.onload = ok; s.onerror = () => { libP = null; no(); }; document.head.append(s); });
 async function join(id) {
   const my = ++token; rid = id; rev = 0; tries = 0; status('正在连接…');
   try { await lib(); } catch { status('联机组件没加载出来，刷新重试'); return; }
@@ -172,13 +172,13 @@ function rtc(p) {
   };
   pc.onconnectionstatechange = () => {
     if (pc !== p.pc) return; const s = pc.connectionState; p.on = s === 'connected';
-    if (s === 'connected') { p.fails = 0; kind(p); api.peersChanged(); stateSoon(); }
+    if (s === 'connected') { p.fails = 0; kind(p); setTimeout(() => peers.get(p.id) === p && kind(p), 3000); feed(p); api.peersChanged(); stateSoon(); }
     if (s === 'disconnected') { p.link = '重连中'; again(p, 5000); }
     if (s === 'failed') { p.link = '视频连不通，重试中'; again(p); }
     paint(p); fixUI();
   };
   again(p, 15000);
-  if (p.offerer) { ['audio', 'video', 'audio', 'video'].forEach(k => pc.addTransceiver(k, { direction: 'sendrecv' })); feed(p); p.retry = setTimeout(() => offer(p), 700); }
+  if (p.offerer) { ['audio', 'video', 'audio', 'video'].forEach(k => pc.addTransceiver(k, { direction: 'sendrecv' })); codecs(pc.getTransceivers()[3]); feed(p); p.retry = setTimeout(() => offer(p), 700); }
 }
 /* 没连上就一直重试，间隔逐渐拉长到 15 秒 */
 function again(p, ms) {
@@ -207,20 +207,38 @@ async function gotRtc(p, m) {
   if (m.d) {
     if (m.d.type === 'offer') {
       if (p.offerer) return;
-      await pc.setRemoteDescription(m.d); pc.getTransceivers().forEach(t => { t.direction = 'sendrecv'; }); feed(p);
+      await pc.setRemoteDescription(m.d); pc.getTransceivers().forEach(t => { t.direction = 'sendrecv'; }); codecs(pc.getTransceivers()[3]); feed(p);
       await pc.setLocalDescription(); send('rtc', { d: pc.localDescription.toJSON(), n: m.n }, p.id);
-    } else { if (pc.signalingState !== 'have-local-offer' || (m.n != null && m.n !== p.seq)) return; await pc.setRemoteDescription(m.d); }
+    } else { if (pc.signalingState !== 'have-local-offer' || (m.n != null && m.n !== p.seq)) return; await pc.setRemoteDescription(m.d); feed(p); }
     for (const c of p.cand.splice(0)) await pc.addIceCandidate(c).catch(() => {});
   } else if (m.c) { if (pc.remoteDescription) await pc.addIceCandidate(m.c).catch(() => {}); else p.cand.push(m.c); }
 }
 async function kind(p) {
   try { const s = await p.pc.getStats(); let r = ''; s.forEach(x => { if (x.type === 'candidate-pair' && x.state === 'succeeded' && x.nominated) { const l = s.get(x.localCandidateId); r = l?.candidateType === 'relay' ? '中转' : '直连'; } }); p.el.title = r ? `${p.name}：${r}` : ''; } catch {}
 }
+/* 共享画面优先用 AV1 / VP9：同样网速下，文字比 VP8 清楚很多 */
+function codecs(t) {
+  try {
+    const l = RTCRtpReceiver.getCapabilities('video').codecs, w = c => ['video/AV1', 'video/VP9', 'video/VP8', 'video/H264'].indexOf(c.mimeType);
+    t?.setCodecPreferences([...l.filter(c => w(c) >= 0).sort((a, b) => w(a) - w(b)), ...l.filter(c => w(c) < 0)]);
+  } catch {}
+}
+/* 看到的共享实际多清楚：分辨率、码率、线路 */
+async function quality(p) {
+  const st = await p.pc.getStats(), o = {}; st.forEach(x => {
+    if (x.type === 'inbound-rtp' && x.kind === 'video' && x.mid === '3') { const l = p.qs; p.qs = { b: x.bytesReceived, t: x.timestamp }; o.w = x.frameWidth; o.h = x.frameHeight; o.fps = x.framesPerSecond | 0; if (l && x.timestamp > l.t) o.mbps = (x.bytesReceived - l.b) * 8 / (x.timestamp - l.t) / 1000; }
+    if (x.type === 'candidate-pair' && x.state === 'succeeded' && x.nominated) o.via = [st.get(x.localCandidateId), st.get(x.remoteCandidateId)].some(c => c?.candidateType === 'relay') ? '中转' : '直连';
+  });
+  return o.w && o.mbps != null ? `${o.w}×${o.h} · ${o.fps} 帧 · ${o.mbps.toFixed(1)} Mbps · ${o.via || ''}` : '';
+}
 function feed(p) {
   const t = p.pc.getTransceivers(); if (t.length < 4) return;
   const put = (i, track, rate) => { const s = t[i].sender; s.replaceTrack(track || null).catch(() => {}); if (rate) try { const q = s.getParameters(); if (q.encodings?.length) { q.encodings[0].maxBitrate = rate; s.setParameters(q).catch(() => {}); } } catch {} };
   put(0, mic); put(1, ME.camTrack(), 350e3); put(2, show?.a); put(3, show?.v);
-  try { const s = t[3].sender, q = s.getParameters(), scr = show?.kind === 'screen'; if (q.encodings?.length) { q.degradationPreference = scr ? 'maintain-resolution' : 'balanced'; q.encodings[0].maxBitrate = scr ? 2.5e6 : 1.6e6; if (scr) q.encodings[0].maxFramerate = 15; else delete q.encodings[0].maxFramerate; s.setParameters(q).catch(() => {}); } } catch {}
+  try {
+    const s = t[3].sender, q = s.getParameters(), clear = show?.kind === 'screen' && show.mode !== 'video';
+    if (q.encodings?.length) { q.degradationPreference = 'maintain-resolution'; q.encodings[0].maxBitrate = Math.min(8e6, 16e6 / Math.max(1, peers.size)); q.encodings[0].maxFramerate = clear ? 15 : 30; s.setParameters(q).catch(() => {}); }
+  } catch {}
 }
 const feedAll = () => peers.forEach(feed);
 
@@ -236,9 +254,9 @@ function micUI() { const b = $('micBtn'); b.textContent = mic ? '关闭麦克风
 
 /* ---------- 放映自己的视频（不上传，直接推给朋友） ---------- */
 let show = null;
-function startShow(video, name, u, screen) {
+function startShow(video, name, u, screen, mode) {
   const s = screen || (video.captureStream ? video.captureStream() : video.mozCaptureStream?.()); if (!s) { if (rid) api.toast('这个浏览器不能把视频放给朋友，请用 Chrome 或 Edge'); return; }
-  show = { name, s, u, kind: screen ? 'screen' : 'video' }; const grab = () => { if (!show || show.s !== s) return; show.v = s.getVideoTracks()[0]; show.a = s.getAudioTracks()[0]; feedAll(); };
+  show = { name, s, u, mode, kind: screen ? 'screen' : 'video' }; const grab = () => { if (!show || show.s !== s) return; show.v = s.getVideoTracks()[0]; show.a = s.getAudioTracks()[0]; feedAll(); };
   s.addEventListener('addtrack', grab); s.addEventListener('removetrack', grab); grab(); stateSoon();
 }
 function stopShow() { if (!show) return; show = null; feedAll(); stateSoon(); }
@@ -251,5 +269,5 @@ function init(a) {
   $('invCopy').onclick = async () => { try { await navigator.clipboard.writeText($('invLink').value); } catch { $('invLink').select(); document.execCommand('copy'); } $('invCopy').textContent = '已复制'; setTimeout(() => $('invCopy').textContent = '复制链接', 1800); };
   $('invClose').onclick = () => $('inv').close(); addEventListener('pagehide', () => { if (ch) leave(); });
 }
-return { init, join, leave, invite, place, urlRoom, status, pushRoom, stateSoon, startShow, stopShow, peers, isGuest: () => !!rid && !owner, inRoom: () => !!rid, meId: () => me, repaint: () => peers.forEach(paint) };
+return { quality, init, join, leave, invite, place, urlRoom, status, pushRoom, stateSoon, startShow, stopShow, peers, isGuest: () => !!rid && !owner, inRoom: () => !!rid, meId: () => me, repaint: () => peers.forEach(paint) };
 })();

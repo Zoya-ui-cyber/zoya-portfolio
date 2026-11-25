@@ -245,7 +245,7 @@ function menu(o) {
   const M = $('menu'), b = wrap.getBoundingClientRect(), I = (t, f, sub) => { const x = mk('button', '', t); if (sub) x.append(mk('small', '', sub)); x.onclick = () => { M.hidden = true; f(x); }; return x; };
   M.replaceChildren(mk('b', '', title(o)));
   if (o.url) M.append(I('打开网页', () => openItem(o.uid), showUrl(o.url)));
-  M.append(I('共享我的屏幕', () => startScreen(o.uid), '屏幕、窗口或标签页'), I('放我的视频', () => { pick.u = o.uid; $('showFile').click(); }, '从这台电脑选，不上传'));
+  M.append(I('共享屏幕 · 文字清楚', () => startScreen(o.uid), '网页、文档、设计稿'), I('共享屏幕 · 视频流畅', () => startScreen(o.uid, 'video'), '视频、动画、游戏'), I('放我的视频', () => { pick.u = o.uid; $('showFile').click(); }, '从这台电脑选，不上传'));
   M.hidden = false; const r = rectOf(o), w = M.offsetWidth, h = M.offsetHeight;
   let x = r.x - b.left + r.w + 10; if (x + w > b.width - 8) x = r.x - b.left - w - 10;
   M.style.left = Math.max(8, Math.min(b.width - w - 8, x)) + 'px'; M.style.top = Math.max(8, Math.min(b.height - h - 76, r.y - b.top)) + 'px';
@@ -260,23 +260,23 @@ function chooser() {
 addEventListener('pointerdown', e => { if (!$('menu').hidden && !e.target.closest('#menu,#showBtn')) $('menu').hidden = true; }, true);
 const pick = { u: null };
 function ready(u) { const sh = shareOn(u); if (sh && sh.who !== '你') { toast(`${sh.who}正在用这件产品`); return false; } const m = mine(); if (m) closeWin(m); return true; }
-async function startScreen(u) {
+async function startScreen(u, mode) {
   if (!navigator.mediaDevices?.getDisplayMedia) return toast('这个浏览器不能共享屏幕，请用电脑上的 Chrome 或 Edge');
   const sh = shareOn(u); if (sh && sh.who !== '你') return toast(`${sh.who}正在用这件产品`);
   let s;
   try {
     s = await navigator.mediaDevices.getDisplayMedia({
-      video: { width: { max: 1920 }, height: { max: 1080 }, frameRate: { max: 15 } },
+      video: mode === 'video' ? { width: { max: 1920 }, height: { max: 1080 }, frameRate: { ideal: 30, max: 30 } } : { width: { max: 2560 }, height: { max: 1440 }, frameRate: { max: 15 } },
       audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, restrictOwnAudio: true },   // 不收房间自己的声音，避免朋友听到回声
       systemAudio: 'include', windowAudio: 'window', selfBrowserSurface: 'exclude', surfaceSwitching: 'include', monitorTypeSurfaces: 'include',
     });
   } catch (e) { if (e.name !== 'NotAllowedError') toast('屏幕共享没有打开'); return; }
   if (view !== 'room' || !ready(u)) return s.getTracks().forEach(t => t.stop());
-  const t = s.getVideoTracks()[0]; t.contentHint = 'detail';
+  const t = s.getVideoTracks()[0]; t.contentHint = mode === 'video' ? 'motion' : 'detail';
   const v = mk('video'); v.autoplay = v.playsInline = v.muted = true; v.srcObject = s;
   const n = makeWin({ key: 'm:me', media: true, kind: 'screen', u, url: '', fr: v, name: '你的屏幕', sub: s.getAudioTracks().length ? '画面和声音' : '只有画面', start: 'mini', stream: s });
   t.onended = () => { if (mine() === n) { closeWin(n); toast('屏幕共享已停止'); } };
-  NET.startShow(v, '屏幕', u, s); drawTags(); shareUI();
+  NET.startShow(v, '屏幕', u, s, mode); drawTags(); shareUI();
   const a = s.getAudioTracks()[0]; toast(a ? '正在共享画面和声音' : '正在共享画面，没有声音。要声音请选标签页或整个屏幕，并勾选“共享音频”');
 }
 function startLocal(file, u) {
@@ -299,6 +299,7 @@ function mediaLive(p) {
   n.fr.play().catch(() => {}); drawTags();
 }
 function watchMedia(p) { mediaLive(p); const n = wins.get('m:' + p.id); if (n) { setMode(n, 'full'); NET.stateSoon(); } }
+setInterval(() => wins.forEach(async n => { const p = n.from && NET.peers.get(n.from); if (!p || n.mode !== 'full') return; const q = await NET.quality(p).catch(() => ''); const u = n.el.querySelector('.u'); if (q && u) u.textContent = q; }), 2000);
 function shareUI() { const m = mine(); $('showBtn').textContent = m ? (m.kind === 'screen' ? '停止共享' : '停止放映') : '共享'; $('showBtn').setAttribute('aria-pressed', !!m); }
 $('showBtn').onclick = () => { const m = mine(); if (m) { closeWin(m); toast('已停止'); } else if ($('menu').hidden) chooser(); else $('menu').hidden = true; };
 $('showFile').onchange = () => { const f = $('showFile').files[0]; $('showFile').value = ''; if (f && byId(pick.u)) startLocal(f, pick.u); };
