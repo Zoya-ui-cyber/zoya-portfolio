@@ -91,6 +91,7 @@
   <span><kbd>L</kbd> 中 / EN</span>
   <span>先点一下画面再操作 · Click the game first</span>
   <button id="fs" type="button">全屏 Fullscreen</button>
+  <button id="restart" type="button">重新开始 Restart</button>
   <button id="survey" type="button" class="survey" hidden>试玩问卷 Survey</button>
 </footer>
 <script>
@@ -143,6 +144,10 @@
         document.getElementById("loading").style.display = "none";
         canvas.focus();
         document.getElementById("fs").onclick = function () { instance.SetFullscreen(1); };
+        // Progress is saved by the game itself (it continues from there next time); this starts over from the title.
+        document.getElementById("restart").onclick = function () {
+          if (confirm("重新开始会清除当前进度，回到主页。确定吗？ Start over? Your progress will be cleared.")) { instance.SendMessage("WebBridge", "Restart"); canvas.focus(); }
+        };
       }).catch(function (message) {
         document.getElementById("msg").textContent = "加载失败 Failed to load: " + message;
       });
